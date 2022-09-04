@@ -45,6 +45,6 @@ If the gear doesn't change on the speedometer, press the `+` key (numpad) and ch
 **That's it, enjoy!**
 
 ## Issues & Limitations
-The only issue is that you have to close and re-launch the program everytime you go in and out of garage. There is no need to restart after hopping into a race.  
+The only issue is that you have to close and re-launch the program and repeat the scan everytime you go in and out of garage or change your car. There is no need to restart the program after hopping into a race if you don't change your car.  
 
 The one limitation for now is that there is no support for neutral, i.e. the program won't put out the gear after doing so on your shifter. I'm already planning on fixing this in the near future.
