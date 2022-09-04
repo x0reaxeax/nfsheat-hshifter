@@ -43,3 +43,8 @@ After that happens, you can go back to the game and try changing gears with your
 If the gear doesn't change on the speedometer, press the `+` key (numpad) and change to two different gears. If the gear changes inside the speedometer, you have the right address. So repeat the process of pressing the `+` key and shifting into two different gears, until it basically works :)  
 
 **That's it, enjoy!**
+
+## Issues & Limitations
+The only issue is that you have to close and re-launch the program everytime you go in and out of garage. There is no need to restart after hopping into a race.  
+
+The one limitation for now is that there is no support for neutral, i.e. the program won't put out the gear after doing so on your shifter. I'm already planning on fixing this in the near future.
