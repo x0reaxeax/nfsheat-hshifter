@@ -7,6 +7,8 @@ Since I didn't have the patience to find static pointer (offset) to the one memo
 
 **[DOWNLOAD PROGRAM HERE](https://github.com/x0reaxeax/nfsheat-hshifter/releases/latest)**
 
+**[VIDEO GUIDE](https://www.youtube.com/watch?v=t9aC8s_3zog)**
+
 ## Getting started
 
 *This guide will cover the usage of built-in memory scanner for ease-of-use.*  
