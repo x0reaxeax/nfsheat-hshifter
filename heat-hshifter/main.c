@@ -14,7 +14,9 @@ typedef enum shift_gear {
     GEAR_3,
     GEAR_4,
     GEAR_5,
-    GEAR_6
+    GEAR_6,
+    GEAR_7,
+    GEAR_8
 } shiftgear_t;
 
 struct targetproc {
@@ -103,7 +105,7 @@ INT64 CALLBACK callback_function(int nCode, WPARAM wParam, LPARAM lParam) {
             break;
     }
 
-    if (!(p->vkCode >= 0x30 && p->vkCode <= 0x36)) {
+    if (!(p->vkCode >= 0x30 && p->vkCode <= 0x38)) {
         goto _SKIP;
     }
 
