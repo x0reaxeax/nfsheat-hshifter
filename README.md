@@ -5,6 +5,8 @@ You can use a shifter with up-to 8 gears.
 
 Since I didn't have the patience to find static pointer (offset) to the one memory address that's required for this (either Frostbite engine or Denuvo or both being difficult..), this program supports either manually supplying the memory address that you can easily find with Cheat Engine, or an automatic memory scanner that will do this for you easily.   
 
+**[DOWNLOAD PROGRAM HERE](https://github.com/x0reaxeax/nfsheat-hshifter/releases/latest)**
+
 ## Getting started
 
 *This guide will cover the usage of built-in memory scanner for ease-of-use.*  
