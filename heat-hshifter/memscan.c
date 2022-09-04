@@ -213,5 +213,5 @@ void scangear(MEMBLOCK *scan, DWORD pid, unsigned int gear) {
     printf("[*] Scanning, please wait..");
     fflush(stdout);
     update_scan(scan, COND_EQUALS, gear);
-    printf("\r[+] %d matches found\r\n\n", get_match_count(scan));
+    printf("\r[+] %d matches found      \r\n\n", get_match_count(scan));
 }
