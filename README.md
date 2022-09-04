@@ -3,7 +3,7 @@
 Since NFS Heat for some reason doesn't support shifters at all, this program makes it possible!  
 You can use a shifter with up-to 8 gears.  
 
-Since I didn't have the patience to find static pointer (offset) to the one memory address that's required for this (either Frostbite engine or Denuvo or both being difficult..), this program supports either manually supplying the memory address that you can easily find with Cheat Engine, or an automatic memory scanner that will do this for you easily.   
+Since I didn't have the patience to find static pointer (offset) to the one memory address that's required for this (either Frostbite engine or Denuvo or both being difficult.. that said, if a kind soul has the time to RE Heat and provide this address, please please please hit me up!), this program supports either manually supplying the memory address that you can easily find with Cheat Engine, or an automatic memory scanner that will do this for you easily.   
 
 **[DOWNLOAD PROGRAM HERE](https://github.com/x0reaxeax/nfsheat-hshifter/releases/latest)**
 
