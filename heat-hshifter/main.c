@@ -67,6 +67,20 @@ int shift(shiftgear_t gear) {
     return EXIT_SUCCESS;
 }
 
+shiftgear_t readgear(shiftgear_t *gear) {
+    shiftgear_t cgear = GEAR_1;
+    shiftgear_t *pgear = (NULL != gear) ? gear : &cgear;
+    size_t bytes_read = 0;
+
+    ReadProcessMemory(heatproc.hproc, (void *) heatproc.gearaddr, pgear, sizeof(int), &bytes_read);
+
+    if (0 == bytes_read) {
+        fprintf(stderr, "[-] Unable to read memory: %lu\n", GetLastError());
+        return GEAR_1;
+    }
+
+    return *pgear;
+}
 
 INT64 CALLBACK callback_function(int nCode, WPARAM wParam, LPARAM lParam) {
     KBDLLHOOKSTRUCT *p = (KBDLLHOOKSTRUCT *) lParam;
@@ -111,7 +125,8 @@ INT64 CALLBACK callback_function(int nCode, WPARAM wParam, LPARAM lParam) {
 
     gear = (p->vkCode - 48);
 
-    if (p->vkCode != heatproc.lastkey) {
+    shiftgear_t gearcheck = GEAR_1;
+    if (p->vkCode != heatproc.lastkey || gear != readgear(&gearcheck)) {
         printf("[*] Shifting to gear %u (key: %lu)\n", (0 == gear) ? gear : (gear - 1), (p->vkCode - 48));
         shift(gear);
         heatproc.lastkey = p->vkCode;
