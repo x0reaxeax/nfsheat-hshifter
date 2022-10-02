@@ -199,13 +199,17 @@ void print_matches(MEMBLOCK *mb_list, int data_size, uintptr_t *result_addr, UIN
 
 MEMBLOCK *new_scan(DWORD pid) {
     MEMBLOCK *scan = NULL;
-
+    
+    printf("\n[*] Initializing memory scanner..");
+    fflush(stdout);
+    
     while (1) {
         scan = create_scan((unsigned int) pid, sizeof(int));
         if (scan) break;
         printf("\r\n[-] Invalid scan");
     }
 
+    printf("\r[+] Successfully initialized memory scanner\n");
     return scan;
 }
 
