@@ -23,6 +23,7 @@ struct targetproc {
     HANDLE    hproc;
     UINT32    pid;
     BOOL      is_scanned;
+    BOOL      is_enabled;
     uintptr_t gearaddr;
     uintptr_t scanaddr[18];
     UINT8     addr_index;
@@ -115,6 +116,11 @@ INT64 CALLBACK callback_function(int nCode, WPARAM wParam, LPARAM lParam) {
             }
             break;
 
+        case VK_MULTIPLY:
+            heatproc.is_enabled = !heatproc.is_enabled;
+            printf("[+] Shifter %s\n", (heatproc.is_enabled) ? "enabled" : "disabled");
+            break;
+            
         default:
             break;
     }
@@ -123,6 +129,10 @@ INT64 CALLBACK callback_function(int nCode, WPARAM wParam, LPARAM lParam) {
         goto _SKIP;
     }
 
+    if (!heatproc.is_enabled) {
+        goto _SKIP;
+    }
+    
     gear = (p->vkCode - 48);
 
     shiftgear_t gearcheck = GEAR_1;
@@ -136,31 +146,29 @@ _SKIP:
     return CallNextHookEx(NULL, nCode, wParam, lParam);
 }
 
-
 void scan_helper(DWORD pid, MEMBLOCK *scan) {
     char discardc = 0;
-    puts("\n[*] Shift into 4th gear and press ENTER..");
-    
-    discardc = getchar();
-    scangear(scan, pid, 5);
+    const char *prompts[] = {
+        "\n[*] Shift into 4th gear and press ENTER..",
+        "[*] Shift into 3rd gear and press ENTER..",
+        "[*] Shift into 2nd gear and press ENTER..",
+        "[*] Shift into 1st gear and press ENTER..",
+        "[*] Shift into REVERSE and press ENTER.."
+    };
 
-    puts("[*] Shift into 3rd gear and press ENTER..");
-    discardc = getchar();
-    scangear(scan, pid, 4);
+    const shiftgear_t gears[] = {
+        GEAR_4,
+        GEAR_3,
+        GEAR_2,
+        GEAR_1,
+        GEAR_REVERSE
+    };
 
-    puts("[*] Shift into 2nd gear and press ENTER..");
-    discardc = getchar();
-    scangear(scan, pid, 3);
-
-
-    puts("[*] Shift into 1st gear and press ENTER..");
-    discardc = getchar();
-    scangear(scan, pid, 2);
-
-
-    puts("[*] Shift into REVERSE and press ENTER..");
-    discardc = getchar();
-    scangear(scan, pid, 0);
+    for (size_t i = 0; i < ARRAYSIZE(prompts); i++) {
+        puts(prompts[i]);
+        discardc = getchar();
+        scangear(scan, pid, gears[i]);
+    }
 }
 
 int main(void) {
@@ -225,6 +233,7 @@ int main(void) {
     }
 
     heatproc.hproc = prochandle;
+    heatproc.is_enabled = TRUE;
 
     HHOOK kbhook = SetWindowsHookExA(WH_KEYBOARD_LL, callback_function, GetModuleHandle(NULL), 0);
 
