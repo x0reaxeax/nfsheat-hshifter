@@ -34,6 +34,7 @@
 #define HEAT_ARTIFACT_VEHICLE_PHYSICS_JOB_STR   "vehiclePhysicsJob"
 
 #define HEAT_GEAR_ADDRESS_REGION_SIZE           0x20000000U // 512MB
+#define HEAT_SECONDARY_GEAR_ADDRESS_REGION_SIZE 0x20F0000   //0x1040000U
 
 #define GET_NIBBLE(value) \
     ((value) & 0x0F) << 4 | \

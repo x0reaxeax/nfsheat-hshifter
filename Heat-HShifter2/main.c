@@ -120,6 +120,7 @@ STATIC BOOLEAN InitShifter(
         "[*] Scanning for string artifact...\n"
     );
 
+    BOOL bSecondaryArtifact = FALSE;
     LPVOID lpStringArtifactAddress = ScanRegionForAsciiString(
         lpRegionBaseAddress,
         HEAT_GEAR_ADDRESS_REGION_SIZE,
@@ -131,8 +132,30 @@ STATIC BOOLEAN InitShifter(
             stderr,
             "[-] Unable to find string artifact.\n"
         );
-        return FALSE;
+        // Try secondary region
+
+        lpStringArtifactAddress = ScanRegionForAsciiString(
+            lpRegionBaseAddress,
+            HEAT_SECONDARY_GEAR_ADDRESS_REGION_SIZE,
+            HEAT_ARTIFACT_VEHICLE_PHYSICS_JOB_STR
+        );
+
+        if (NULL == lpStringArtifactAddress) {
+            fprintf(
+                stderr,
+                "[-] Unable to find string artifact in secondary region.\n"
+            );
+            return FALSE;
+        }
+
+        printf(
+            "[+] Found string artifact in secondary region.\n"
+        );
+
+        bSecondaryArtifact = TRUE;
     }
+
+
 
     printf(
         "[+] String artifact address: 0x%llX\n",
