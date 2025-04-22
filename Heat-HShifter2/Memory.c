@@ -1,3 +1,25 @@
+/// H-shifter support for Need for Speed Heat.
+/// Copyright (C) 2025  x0reaxeax
+///
+/// This program is free software: you can redistribute it and/or modify
+/// it under the terms of the GNU General Public License as published by
+/// the Free Software Foundation, either version 3 of the License, or
+/// (at your option) any later version.
+///
+/// This program is distributed in the hope that it will be useful,
+/// but WITHOUT ANY WARRANTY; without even the implied warranty of
+/// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+/// GNU General Public License for more details.
+///
+/// You should have received a copy of the GNU General Public License
+/// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+/// @file Memory.c
+/// @brief Helper functions for reading and writing memory of the game process.
+/// 
+///   - github.con/x0reaxeax/nfsheat-hshifter
+/// 
+
 #include "Utils.h"
 
 #include <stdio.h>

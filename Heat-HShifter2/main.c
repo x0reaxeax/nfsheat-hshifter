@@ -1,3 +1,36 @@
+/// H-shifter support for Need for Speed Heat.
+/// Copyright (C) 2025  x0reaxeax
+///
+/// This program is free software: you can redistribute it and/or modify
+/// it under the terms of the GNU General Public License as published by
+/// the Free Software Foundation, either version 3 of the License, or
+/// (at your option) any later version.
+///
+/// This program is distributed in the hope that it will be useful,
+/// but WITHOUT ANY WARRANTY; without even the implied warranty of
+/// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+/// GNU General Public License for more details.
+///
+/// You should have received a copy of the GNU General Public License
+/// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+/// @file main.c
+/// @brief The program retrieves 2 memory addresses from the game process
+///  via a string artifact, which is used as an offset base for the gear addresses.
+/// 
+///  The program uses a low-level keyboard hook to intercept key presses
+///  and change gears in the game.
+/// 
+///  The hooked keys are:
+///    *  - 0-9: Change gear (NOT NUMPAD!!)
+///    *  - INSERT: Toggle between the gear display and the main console window
+///    *  - END: Exit the program
+///  
+/// 
+///  The program uses ReadProcessMemory and WriteProcessMemory as read/write primitives.
+///   - github.con/x0reaxeax/nfsheat-hshifter
+///  
+
 #include <Windows.h>
 #include <stdio.h>
 
@@ -132,6 +165,8 @@ STATIC BOOL ShiftGear(
 
     SIZE_T cbBytesWritten = 0;
 
+    // Writes go ASAP
+
     if (!WriteProcessMemory(
         g_ShifterConfig.hGameProcess,
         g_ShifterConfig.lpCurrentGearAddress,
@@ -255,10 +290,10 @@ int main(int argc, const char *argv[]) {
     HHOOK hKeyboardHook = NULL;
 
     printf(
-        "***************************************************\n"
-        "***** Need for Speed Heat : Heat-HShifter2   ******\n"
-        "***************************************************\n"
-        "              github.com/x0reaxeax/Heat-HShifter2\n\n"
+        "*****************************************************\n"
+        "***** Need for Speed Heat : Heat-HShifter v2   ******\n"
+        "*****************************************************\n"
+        "               github.com/x0reaxeax/nfsheat-hshifter\n\n"
     );
 
     printf(
