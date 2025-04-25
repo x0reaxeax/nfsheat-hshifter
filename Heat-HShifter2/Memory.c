@@ -22,119 +22,223 @@
 
 #include "Utils.h"
 
+#include <TlHelp32.h>
+
 #include <stdio.h>
 
-LPVOID GetGearRegionAddressBase(
-    VOID
+STATIC LPMODULEENTRY32 GetModuleInfo(
+    LPCWSTR wszTargetModuleName
 ) {
-    LPVOID lpRegionAddress = NULL;
+    LPMODULEENTRY32 lpModuleEntry32 = NULL;
+    MODULEENTRY32 me32 = {
+        .dwSize = sizeof(MODULEENTRY32)
+    };
 
-    MEMORY_BASIC_INFORMATION memInfo = { 0 };
-
-    while (VirtualQueryEx(
-        g_ShifterConfig.hGameProcess,
-        lpRegionAddress,
-        &memInfo,
-        sizeof(memInfo)
-    ) == sizeof(memInfo)) {
-        if (HEAT_GEAR_ADDRESS_REGION_SIZE == memInfo.RegionSize) {
-            return memInfo.BaseAddress;
-        }
-        lpRegionAddress = (LPVOID) (
-            (ULONG_PTR)memInfo.BaseAddress + memInfo.RegionSize
-        );
-    }
-
-    return NULL;
-}
-
-LPVOID ScanRegionForAsciiString(
-    LPCVOID lpBaseAddress, 
-    SIZE_T cbRegionSize, 
-    LPCSTR szTargetString
-) {
-    CONST DWORD dwReadSize = 0x1000;
-    CONST SIZE_T cbStrLen = sizeof(HEAT_ARTIFACT_VEHICLE_PHYSICS_JOB_STR);
-
-    LPBYTE abyReadBuffer = VirtualAlloc(
-        NULL, 
-        dwReadSize, 
-        MEM_COMMIT | MEM_RESERVE, 
-        PAGE_READWRITE
+    BOOLEAN bFound = FALSE;
+    HANDLE hSnapshot = CreateToolhelp32Snapshot(
+        TH32CS_SNAPMODULE,
+        g_ShifterConfig.dwGameProcessId
     );
 
-    if (NULL == abyReadBuffer) {
+    if (INVALID_HANDLE_VALUE == hSnapshot) {
         fprintf(
-            stderr, 
-            "[-] VirtualAlloc(): E%lu\n",
+            stderr,
+            "[-] CreateToolhelp32Snapshot(): E%lu\n",
             GetLastError()
         );
         return NULL;
     }
 
-    DWORD64 qwOffset = 0;
+    if (Module32First(hSnapshot, &me32)) {
+        do {
+            if (EXIT_SUCCESS == wcscmp(
+                me32.szModule,
+                wszTargetModuleName
+            )) {
+                bFound = TRUE;
+                break;
+            }
+        } while (Module32Next(hSnapshot, &me32));
+    }
 
-    while (qwOffset < cbRegionSize) {
-        SIZE_T cbBytesRead = 0;
-        SIZE_T cbChunkLeft = (SIZE_T) (cbRegionSize - qwOffset);
-        SIZE_T cbChunkSize = \
-            (cbChunkLeft > dwReadSize) ? dwReadSize : cbChunkLeft;
+    if (!bFound) {
+        return NULL;
+    }
 
-        LPCVOID lpCurrentAddress = (LPCVOID) (
-            (ULONG_PTR) lpBaseAddress + qwOffset
+    lpModuleEntry32 = VirtualAlloc(
+        NULL,
+        sizeof(MODULEENTRY32),
+        MEM_COMMIT | MEM_RESERVE,
+        PAGE_READWRITE
+    );
+
+    if (NULL == lpModuleEntry32) {
+        fprintf(
+            stderr,
+            "[-] VirtualAlloc(): E%lu\n",
+            GetLastError()
         );
+        CloseHandle(hSnapshot);
+        return NULL;
+    }
 
-        if (!ReadProcessMemory(
+    memcpy(
+        lpModuleEntry32,
+        &me32,
+        sizeof(MODULEENTRY32)
+    );
+
+    CloseHandle(hSnapshot);
+    return lpModuleEntry32;
+}
+
+STATIC INLINE BOOLEAN IsAddressStateValid(
+    DWORD dwState,
+    DWORD dwProtect
+) {
+    if (MEM_COMMIT != dwState) {
+        return FALSE;
+    }
+
+    if (PAGE_GUARD & dwProtect) {
+        return FALSE;
+    }
+
+    if (PAGE_NOACCESS & dwProtect) {
+        return FALSE;
+    }
+
+    if (PAGE_EXECUTE_READ & dwProtect) {
+        return FALSE;
+    }
+
+    if (!(PAGE_READWRITE & dwProtect)) {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+LPCVOID AobScan(
+    LPCBYTE abyPattern,
+    CONST SIZE_T cbPatternSize
+) {
+    SIZE_T cbBytesRead = 0;
+    
+    LPCBYTE lpAobMatch = NULL;
+    LPCBYTE lpCurrentAddress = (LPCBYTE) AOBSCAN_LOW_ADDRESS_LIMIT;
+
+    LPBYTE lpReadBuffer = VirtualAlloc(
+        NULL,
+        AOBSCAN_SCAN_CHUNK_SIZE,
+        MEM_COMMIT | MEM_RESERVE,
+        PAGE_READWRITE
+    );
+
+    if (NULL == lpReadBuffer) {
+        fprintf(
+            stderr,
+            "[-] VirtualAlloc(): E%lu\n",
+            GetLastError()
+        );
+        return NULL;
+    }
+    
+    MEMORY_BASIC_INFORMATION memInfo = { 0 };
+
+    while ((DWORD64) lpCurrentAddress < AOBSCAN_HIGH_ADDRESS_LIMIT) {
+        if (0 == ((DWORD64) lpCurrentAddress & 0x4000000)) {
+            printf(
+                "\r[*] Scanning memory: 0x%012llX",
+                (DWORD64) lpCurrentAddress
+            );
+        }
+        
+        if (sizeof(memInfo) != VirtualQueryEx(
             g_ShifterConfig.hGameProcess,
             lpCurrentAddress,
-            abyReadBuffer,
-            cbChunkSize,
-            &cbBytesRead
+            &memInfo,
+            sizeof(MEMORY_BASIC_INFORMATION)
         )) {
-            qwOffset += cbChunkSize;
+            lpCurrentAddress += AOBSCAN_SCAN_CHUNK_SIZE;
             continue;
         }
 
-        for (DWORD i = 0; i + cbStrLen < cbBytesRead; ++i) {
-            if (EXIT_SUCCESS == memcmp(
-                &abyReadBuffer[i], 
-                szTargetString, 
-                cbStrLen
-            )) {
-                DWORD64 qwFoundAddress = \
-                    (DWORD64) (ULONG_PTR) lpCurrentAddress + i;
+        if (!IsAddressStateValid(
+            memInfo.State,
+            memInfo.Protect
+        )) {
+            lpCurrentAddress = (LPCBYTE) memInfo.BaseAddress + memInfo.RegionSize;
+            continue;
+        }
+        
+        LPCBYTE lpRegionBase = (LPCBYTE)memInfo.BaseAddress;
+        SIZE_T cbRegionSize = memInfo.RegionSize;
 
-                VirtualFree(
-                    abyReadBuffer, 
-                    0, 
-                    MEM_RELEASE
-                );
-                return (LPVOID) qwFoundAddress;
+        for (DWORD64 qwOffset = 0; qwOffset < cbRegionSize; qwOffset += AOBSCAN_SCAN_CHUNK_SIZE) {
+            SIZE_T cbChunkSize = ((cbRegionSize - qwOffset) > AOBSCAN_SCAN_CHUNK_SIZE) 
+                ? AOBSCAN_SCAN_CHUNK_SIZE 
+                : (cbRegionSize - qwOffset);
+
+            LPCBYTE lpChunkAddr = lpRegionBase + qwOffset;
+
+            if (!ReadProcessMemory(
+                g_ShifterConfig.hGameProcess,
+                lpChunkAddr,
+                lpReadBuffer,
+                cbChunkSize,
+                &cbBytesRead
+            )) {
+                continue;
+            }
+
+            for (DWORD64 qwIndex = 0; qwIndex + cbPatternSize <= cbBytesRead; ++qwIndex) {
+                if (lpReadBuffer[qwIndex] != abyPattern[0]) { // next-level filter
+                    continue;
+                }
+                
+                if (EXIT_SUCCESS == memcmp(
+                    lpReadBuffer + qwIndex,
+                    abyPattern,
+                    cbPatternSize
+                )) {
+                    lpAobMatch = lpChunkAddr + qwIndex;
+                    goto _FINAL;
+                }
             }
         }
-
-        qwOffset += cbChunkSize;
+        
+        lpCurrentAddress = (LPCBYTE)memInfo.BaseAddress + memInfo.RegionSize;
     }
 
+_FINAL:
+
+    putchar('\n');
+
     VirtualFree(
-        abyReadBuffer, 
+        lpReadBuffer,
         0,
         MEM_RELEASE
     );
 
-    return NULL;
+    return lpAobMatch;
 }
 
 DWORD ReadGear(
-    VOID
+    CONST TARGET_GEAR eTargetGear
 ) {
-    DWORD dwCurrentGear = 0;
+    DWORD dwTargetGear = 0;
     SIZE_T cbBytesRead = 0;
+
+    LPCVOID lpTargetAddress = (TARGET_GEAR_CURRENT == eTargetGear) 
+        ? g_ShifterConfig.lpCurrentGearAddress 
+        : g_ShifterConfig.lpLastGearAddress;
+
 
     if (!ReadProcessMemory(
         g_ShifterConfig.hGameProcess,
-        g_ShifterConfig.lpCurrentGearAddress,
-        &dwCurrentGear,
+        lpTargetAddress,
+        &dwTargetGear,
         sizeof(DWORD),
         &cbBytesRead
     )) {
@@ -143,8 +247,8 @@ DWORD ReadGear(
             "[-] ReadProcessMemory(): E%lu\n",
             GetLastError()
         );
-        return 0;
+        return GEAR_INVALID;
     }
 
-    return dwCurrentGear;
+    return dwTargetGear;
 }

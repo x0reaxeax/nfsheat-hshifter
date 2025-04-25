@@ -26,15 +26,26 @@
 #define GLOBAL
 #define VOLATILE    volatile
 #define STATIC      static
+#define INLINE      inline
+
+#define PAGE_SIZE   0x1000
 
 #define HEAT_GEAR_ADDRESS_NIBBLE                0x8
 #define HEAT_LAST_GEAR_ADDRESS_NIBBLE           0x0
-#define HEAT_LAST_GEAR_ADDRESS_OFFSET           0x6A8
-#define HEAT_CURRENT_GEAR_ADDRESS_OFFSET        0x53D0
-#define HEAT_ARTIFACT_VEHICLE_PHYSICS_JOB_STR   "vehiclePhysicsJob"
+#define HEAT_CURRENT_GEAR_ARTIFACT_OFFSET       0x98
+#define HEAT_LAST_GEAR_ARTIFACT_OFFSET          0x48
 
-#define HEAT_GEAR_ADDRESS_REGION_SIZE           0x20000000U // 512MB
-#define HEAT_SECONDARY_GEAR_ADDRESS_REGION_SIZE 0x20F0000   //0x1040000U
+#define AOBSCAN_LOW_ADDRESS_LIMIT               0x92400000ULL
+#define AOBSCAN_HIGH_ADDRESS_LIMIT              0x2FFFFFFFFULL
+#define AOBSCAN_SCAN_CHUNK_SIZE                 0x40000U        // 256KB
+
+//#define HEAT_LAST_GEAR_ADDRESS_OFFSET           0x6A8
+//#define HEAT_LAST_GEAR_ADDRESS_OFFSET_SECONDARY 0x428
+//#define HEAT_CURRENT_GEAR_ADDRESS_OFFSET        0x53D0
+//#define HEAT_ARTIFACT_VEHICLE_PHYSICS_JOB_STR   "vehiclePhysicsJob"
+
+//#define HEAT_GEAR_ADDRESS_REGION_SIZE           0x20000000U // 512MB
+//#define HEAT_SECONDARY_GEAR_ADDRESS_REGION_SIZE 0x20F0000   //0x1040000U
 
 #define GET_NIBBLE(value) \
     ((value) & 0x0F) << 4 | \
@@ -50,8 +61,14 @@ typedef enum _SHIFT_GEAR {
     GEAR_5,
     GEAR_6,
     GEAR_7,
-    GEAR_8
+    GEAR_8,
+    GEAR_INVALID = 0xFFFFFFFF
 } SHIFT_GEAR, *LPSHIFT_GEAR;
+
+typedef enum _TARGET_GEAR {
+    TARGET_GEAR_CURRENT = 0,
+    TARGET_GEAR_LAST
+} TARGET_GEAR, *LPTARGET_GEAR;
 
 typedef struct _SHIFTER_CONFIG {
     HANDLE hGameProcess;
@@ -93,23 +110,26 @@ LPVOID GetGearRegionAddressBase(
 );
 
 /// <summary>
-///  Scans target memory for a known string artifact.
+///  Scans target memory for a known signature/artifact.
 /// </summary>
-/// <param name="lpBaseAddress"></param>
-/// <param name="cbRegionSize"></param>
-/// <param name="szTargetString"></param>
+/// <param name="abyPattern"></param>
+/// <param name="cbPatternSize"></param>
 /// <returns>
-///   Address of the string artifact if found, NULL on failure.
+///   Address of the signature/artifact if found, NULL on failure.
 /// </returns>
-LPVOID ScanRegionForAsciiString(
-    LPCVOID lpBaseAddress,
-    SIZE_T cbRegionSize,
-    LPCSTR szTargetString
+LPCVOID AobScan(
+    LPCBYTE abyPattern,
+    CONST SIZE_T cbPatternSize
 );
 
 DWORD ReadGear(
-    VOID
+    CONST TARGET_GEAR eTargetGear
 );
+
+#define ReadCurrentGear() \
+    ReadGear(TARGET_GEAR_CURRENT)
+#define ReadLastGear() \
+    ReadGear(TARGET_GEAR_LAST)
 
 VOID ClearScreen(
     HANDLE hConsole

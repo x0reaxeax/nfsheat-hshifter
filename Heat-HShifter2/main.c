@@ -16,7 +16,7 @@
 
 /// @file main.c
 /// @brief The program retrieves 2 memory addresses from the game process
-///  via a string artifact, which is used as an offset base for the gear addresses.
+///  via memory artifacts, which are used as an offset base for the gear addresses.
 /// 
 ///  The program uses a low-level keyboard hook to intercept key presses
 ///  and change gears in the game.
@@ -24,6 +24,7 @@
 ///  The hooked keys are:
 ///    *  - 0-9: Change gear (NOT NUMPAD!!)
 ///    *  - INSERT: Toggle between the gear display and the main console window
+///    *  - DELETE: Re-scan for gear addresses (do this every time you enter and exit garage)
 ///    *  - END: Exit the program
 ///  
 /// 
@@ -36,7 +37,83 @@
 
 #include "Utils.h"
 
+// Verifies written gear value, but causes a 75ms delay
+#define ENABLE_GEAR_VALIDATION
+
 GLOBAL SHIFTER_CONFIG g_ShifterConfig = { 0 };
+
+STATIC BOOLEAN ScanForGearAddresses(
+    VOID
+) {
+    CONST BYTE abCurrentGearPattern[] = {
+        0x9A, 0x99, 0x99, 0x3E, 0x66, 0x66, 0xE6, 0x3E,
+        0xCD, 0xCC, 0x0C, 0x3F, 0x33, 0x33, 0x33, 0x3F,
+        0x9A, 0x99, 0x59, 0x3F, 0x00, 0x00, 0x80, 0x3F,
+        0xCD, 0xCC, 0x4C, 0x3E, 0x33, 0x33, 0x33, 0x3F,
+        0x00, 0x00, 0x20, 0x41, 0x00, 0x00, 0x00, 0x3F,
+        0x00, 0x00, 0x40, 0x3F, 0x00, 0x00, 0x80, 0x3F,
+        0x00, 0x00, 0x40, 0x40, 0x00, 0x00, 0x7A, 0x44,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0xC0, 0xDA, 0x45
+    };
+
+    CONST BYTE abLastGearPattern[] = {
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x3F, 0x00, 0x00, 0x00, 0x3F,
+        0x00, 0x00, 0x00, 0x3F, 0x00, 0x00, 0x00, 0x3F,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+    };
+
+    LPCVOID lpCurrentGearArtifact = AobScan(
+        abCurrentGearPattern,
+        sizeof(abCurrentGearPattern)
+    );
+
+    if (NULL == lpCurrentGearArtifact) {
+        fprintf(
+            stderr,
+            "[-] Unable to find memory artifact.\n"
+        );
+
+        return FALSE;
+    }
+
+    printf(
+        "[+] Memory artifact address (current gear): 0x%llX\n",
+        (DWORD64) lpCurrentGearArtifact
+    );
+
+    LPCVOID lpLastGearArtifact = AobScan(
+        abLastGearPattern,
+        sizeof(abLastGearPattern)
+    );
+
+    if (NULL == lpLastGearArtifact) {
+        fprintf(
+            stderr,
+            "[-] Unable to find memory artifact.\n"
+        );
+
+        return FALSE;
+    }
+
+    printf(
+        "[+] Memory artifact address (previous gear): 0x%llX\n",
+        (DWORD64) lpLastGearArtifact
+    );
+
+    g_ShifterConfig.lpCurrentGearAddress = (LPVOID) (
+        (DWORD64) lpCurrentGearArtifact +
+        HEAT_CURRENT_GEAR_ARTIFACT_OFFSET
+    );
+
+    g_ShifterConfig.lpLastGearAddress = (LPVOID) (
+        (DWORD64) lpLastGearArtifact +
+        HEAT_LAST_GEAR_ARTIFACT_OFFSET
+    );
+
+    return TRUE;
+}
 
 STATIC BOOLEAN InitShifter(
     VOID
@@ -102,75 +179,17 @@ STATIC BOOLEAN InitShifter(
         return FALSE;
     }
 
-    LPVOID lpRegionBaseAddress = GetGearRegionAddressBase();
-    if (NULL == lpRegionBaseAddress) {
+    printf(
+        "[*] Scanning for memory artifact...\n"
+    );
+
+    if (!ScanForGearAddresses()) {
         fprintf(
             stderr,
-            "[-] Unable to find gear region base address.\n"
+            "[-] Unable to find gear addresses.\n"
         );
         return FALSE;
     }
-
-    printf(
-        "[+] Target region base address: 0x%llX\n",
-        (DWORD64) lpRegionBaseAddress
-    );
-
-    printf(
-        "[*] Scanning for string artifact...\n"
-    );
-
-    BOOL bSecondaryArtifact = FALSE;
-    LPVOID lpStringArtifactAddress = ScanRegionForAsciiString(
-        lpRegionBaseAddress,
-        HEAT_GEAR_ADDRESS_REGION_SIZE,
-        HEAT_ARTIFACT_VEHICLE_PHYSICS_JOB_STR
-    );
-
-    if (NULL == lpStringArtifactAddress) {
-        fprintf(
-            stderr,
-            "[-] Unable to find string artifact.\n"
-        );
-        // Try secondary region
-
-        lpStringArtifactAddress = ScanRegionForAsciiString(
-            lpRegionBaseAddress,
-            HEAT_SECONDARY_GEAR_ADDRESS_REGION_SIZE,
-            HEAT_ARTIFACT_VEHICLE_PHYSICS_JOB_STR
-        );
-
-        if (NULL == lpStringArtifactAddress) {
-            fprintf(
-                stderr,
-                "[-] Unable to find string artifact in secondary region.\n"
-            );
-            return FALSE;
-        }
-
-        printf(
-            "[+] Found string artifact in secondary region.\n"
-        );
-
-        bSecondaryArtifact = TRUE;
-    }
-
-
-
-    printf(
-        "[+] String artifact address: 0x%llX\n",
-        (DWORD64) lpStringArtifactAddress
-    );
-
-    g_ShifterConfig.lpCurrentGearAddress = (LPVOID) (
-        (DWORD64) lpStringArtifactAddress +
-        HEAT_CURRENT_GEAR_ADDRESS_OFFSET
-    );
-
-    g_ShifterConfig.lpLastGearAddress = (LPVOID) (
-        (DWORD64) g_ShifterConfig.lpCurrentGearAddress +
-        HEAT_LAST_GEAR_ADDRESS_OFFSET
-    );
 
     printf(
         "[+] Current gear address: 0x%llX\n"
@@ -178,6 +197,19 @@ STATIC BOOLEAN InitShifter(
         (DWORD64) g_ShifterConfig.lpCurrentGearAddress,
         (DWORD64) g_ShifterConfig.lpLastGearAddress
     );
+
+    CONST DWORD dwCurrentGear = ReadCurrentGear();
+    CONST DWORD dwLastGear = ReadLastGear();
+
+    if (dwCurrentGear != dwLastGear) {
+        fprintf(
+            stderr,
+            "[-] Current gear doesn't correspond to last gear state (%lu != %lu)\n",
+            dwCurrentGear,
+            dwLastGear
+        );
+        return FALSE;
+    }
 
     return TRUE;
 }
@@ -220,7 +252,12 @@ STATIC BOOL ShiftGear(
         return FALSE;
     }
 
-    g_ShifterConfig.dwCurrentGear = eTargetGear;
+#ifdef ENABLE_GEAR_VALIDATION
+    // Give the game some time to (in/)validate gear change
+    Sleep(75);
+#endif
+
+    g_ShifterConfig.dwCurrentGear = ReadCurrentGear();//eTargetGear;
 
     if (g_ShifterConfig.bGearWindowEnabled) {
         DrawAsciiGearDisplay();
@@ -232,7 +269,8 @@ STATIC BOOL ShiftGear(
 VOID SwitchWindows(
     VOID
 ) {
-    g_ShifterConfig.dwCurrentGear = ReadGear();
+
+    g_ShifterConfig.dwCurrentGear = ReadCurrentGear();
 
     HANDLE hTargetConsole = NULL;
 
@@ -266,6 +304,25 @@ VOID SwitchWindows(
     }
 }
 
+STATIC BOOLEAN SetMainWindowVisible(
+    VOID
+) {
+    if (!SetConsoleActiveScreenBuffer(
+        g_ShifterConfig.hConsoleWindow
+    )) {
+        fprintf(
+            stderr,
+            "[-] SetConsoleActiveScreenBuffer(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    g_ShifterConfig.bIsMainWindowVisible = TRUE;
+    g_ShifterConfig.bIsGearWindowVisible = FALSE;
+    return TRUE;
+}
+
 INT64 CALLBACK KeyboardHookProc(
     int nCode,
     WPARAM wParam,
@@ -286,8 +343,25 @@ INT64 CALLBACK KeyboardHookProc(
         goto _NEXT_HOOK;
     }
 
+    if (VK_DELETE == lpKbdHookStruct->vkCode) {
+        SetMainWindowVisible();
+
+        if (!ScanForGearAddresses()) {
+            fprintf(
+                stderr,
+                "[-] Unable to find gear addresses.\n"
+            );
+            PostQuitMessage(EXIT_FAILURE);
+        }
+
+        if (g_ShifterConfig.bGearWindowEnabled) {
+            SwitchWindows();
+        }
+
+        goto _NEXT_HOOK;
+    }
+
     if (VK_INSERT == lpKbdHookStruct->vkCode) {
-        g_ShifterConfig.bGearWindowEnabled = !g_ShifterConfig.bGearWindowEnabled;
         SwitchWindows();
         goto _NEXT_HOOK;
     }
@@ -354,23 +428,28 @@ int main(int argc, const char *argv[]) {
         "[+] Registered low-level keyboard hook.\n"
     );
 
-    printf("[*] Switching to gear display console window..\n");
 
-    if (!SetConsoleActiveScreenBuffer(
-        g_ShifterConfig.hGearConsoleWindow
-    )) {
-        fprintf(
-            stderr,
-            "[-] SetConsoleActiveScreenBuffer(): E%lu\n",
-            GetLastError()
-        );
-        return EXIT_FAILURE;
+    if (g_ShifterConfig.bGearWindowEnabled) {
+        printf("[*] Switching to gear display console window..\n");
+        
+        if (!SetConsoleActiveScreenBuffer(
+            g_ShifterConfig.hGearConsoleWindow
+        )) {
+            fprintf(
+                stderr,
+                "[-] SetConsoleActiveScreenBuffer(): E%lu\n",
+                GetLastError()
+            );
+            return EXIT_FAILURE;
+        }
     }
 
     // Read for initial gear display
-    g_ShifterConfig.dwCurrentGear = ReadGear();
+    g_ShifterConfig.dwCurrentGear = ReadCurrentGear();
 
-    DrawAsciiGearDisplay();
+    if (g_ShifterConfig.bGearWindowEnabled) {
+        DrawAsciiGearDisplay();
+    }
 
     while ((iMsgResult = GetMessageA(
         &msg,

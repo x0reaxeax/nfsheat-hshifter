@@ -152,7 +152,7 @@ VOID DrawAsciiGearDisplay(
 
     DWORD dwCharsToWrite;
     DWORD dwCharsWritten = 0;
-    CHAR szOutputBuffer[512] = { 0 };
+    CHAR szOutputBuffer[1024] = { 0 };
 
     CHAR cTargetGear = '1';
 
@@ -177,6 +177,7 @@ VOID DrawAsciiGearDisplay(
         "[ --------------------------------- ]\n"
         "[ 0 - 9  - Gear Control             ]\n"
         "[ INSERT - Toggle Gear/Main Window  ]\n"
+        "[ DELETE - Rescan Gear Addresses    ]\n"
         "[ END    - Exit H-Shifter           ]\n"
         "[***********************************]\n"
         "\n"
