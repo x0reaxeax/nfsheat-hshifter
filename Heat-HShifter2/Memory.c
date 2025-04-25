@@ -119,9 +119,108 @@ STATIC INLINE BOOLEAN IsAddressStateValid(
     return TRUE;
 }
 
+STATIC BOOLEAN VerifyPlayerCurrentGear(
+    LPCVOID lpcCurrentArtifactAddress
+) {
+    LPCVOID lpTargetAddress = (LPCVOID) (
+        (DWORD64) lpcCurrentArtifactAddress + 0xB4
+    );
+
+    DWORD dwRead1, dwRead2;
+    SIZE_T cbBytesRead = 0;
+
+    if (!ReadProcessMemory(
+        g_ShifterConfig.hGameProcess,
+        lpTargetAddress,
+        &dwRead1,
+        sizeof(DWORD),
+        &cbBytesRead
+    )) {
+        fprintf(
+            stderr,
+            "[-] ReadProcessMemory(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    Sleep(500);
+
+    if (!ReadProcessMemory(
+        g_ShifterConfig.hGameProcess,
+        lpTargetAddress,
+        &dwRead2,
+        sizeof(DWORD),
+        &cbBytesRead
+    )) {
+        fprintf(
+            stderr,
+            "[-] ReadProcessMemory(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    if (dwRead1 == dwRead2) {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+STATIC BOOLEAN VerifyPlayerLastGear(
+    LPCVOID lpcCurrentArtifactAddress
+) {
+    LPCVOID lpcTargetAddress = (LPCVOID) (
+        (DWORD64)lpcCurrentArtifactAddress - 0xC
+    );
+
+    SIZE_T cbBytesRead = 0;
+    DWORD dwRead1, dwRead2;
+
+    if (!ReadProcessMemory(
+        g_ShifterConfig.hGameProcess,
+        lpcTargetAddress,
+        &dwRead1,
+        sizeof(DWORD),
+        &cbBytesRead
+    )) {
+        fprintf(
+            stderr,
+            "[-] ReadProcessMemory(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    Sleep(500);
+
+    if (!ReadProcessMemory(
+        g_ShifterConfig.hGameProcess,
+        (LPCVOID) dwRead1,
+        &dwRead2,
+        sizeof(DWORD),
+        &cbBytesRead
+    )) {
+        fprintf(
+            stderr,
+            "[-] ReadProcessMemory(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    if (dwRead1 == dwRead2) {
+        return FALSE;
+    }
+    
+    return TRUE;
+}
+
 LPCVOID AobScan(
     LPCBYTE abyPattern,
-    CONST SIZE_T cbPatternSize
+    CONST SIZE_T cbPatternSize,
+    TARGET_GEAR eTargetGear
 ) {
     SIZE_T cbBytesRead = 0;
     
@@ -196,13 +295,26 @@ LPCVOID AobScan(
                 if (lpReadBuffer[qwIndex] != abyPattern[0]) { // next-level filter
                     continue;
                 }
-                
+
                 if (EXIT_SUCCESS == memcmp(
                     lpReadBuffer + qwIndex,
                     abyPattern,
                     cbPatternSize
                 )) {
-                    lpAobMatch = lpChunkAddr + qwIndex;
+                    LPCVOID lpTempMatch = lpChunkAddr + qwIndex;
+                    if (TARGET_MODE_MULTIPLAYER == g_ShifterConfig.eTargetMode) {
+                        if (TARGET_GEAR_CURRENT == eTargetGear) {
+                            if (!VerifyPlayerCurrentGear(lpTempMatch)) {
+                                continue;
+                            }
+                        } else {
+                            if (!VerifyPlayerLastGear(lpTempMatch)) {
+                                continue;
+                            }
+                        }
+                    }
+
+                    lpAobMatch = lpTempMatch;
                     goto _FINAL;
                 }
             }

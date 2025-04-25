@@ -66,7 +66,8 @@ STATIC BOOLEAN ScanForGearAddresses(
 
     LPCVOID lpCurrentGearArtifact = AobScan(
         abCurrentGearPattern,
-        sizeof(abCurrentGearPattern)
+        sizeof(abCurrentGearPattern),
+        TARGET_GEAR_CURRENT
     );
 
     if (NULL == lpCurrentGearArtifact) {
@@ -85,7 +86,8 @@ STATIC BOOLEAN ScanForGearAddresses(
 
     LPCVOID lpLastGearArtifact = AobScan(
         abLastGearPattern,
-        sizeof(abLastGearPattern)
+        sizeof(abLastGearPattern),
+        TARGET_GEAR_LAST
     );
 
     if (NULL == lpLastGearArtifact) {
@@ -116,7 +118,7 @@ STATIC BOOLEAN ScanForGearAddresses(
 }
 
 STATIC BOOLEAN InitShifter(
-    VOID
+    TARGET_MODE eTargetMode
 ) {
     g_ShifterConfig.dwCurrentGear = GEAR_1;
     g_ShifterConfig.bGearWindowEnabled = TRUE;
@@ -178,6 +180,37 @@ STATIC BOOLEAN InitShifter(
         );
         return FALSE;
     }
+
+    if (TARGET_MODE_INVALID == eTargetMode) {
+        CHAR cInputChar;
+        printf(
+            "[*] Select target mode:\n"
+            "[1] Singleplayer\n"
+            "[2] Multiplayer\n"
+            "[$]: "
+        );
+        cInputChar = getchar();
+
+        switch (cInputChar) {
+            case '1':
+                g_ShifterConfig.eTargetMode = TARGET_MODE_SINGLEPLAYER;
+                break;
+            case '2':
+                g_ShifterConfig.eTargetMode = TARGET_MODE_MULTIPLAYER;
+                break;
+            default:
+                fprintf(
+                    stderr,
+                    "[-] Invalid target mode.\n"
+                );
+                return FALSE;
+        }
+    }
+
+    printf(
+        "[*] Target mode: %s\n",
+        (TARGET_MODE_SINGLEPLAYER == g_ShifterConfig.eTargetMode) ? "Singleplayer" : "Multiplayer"
+    );
 
     printf(
         "[*] Scanning for memory artifact...\n"
@@ -386,6 +419,21 @@ int main(int argc, const char *argv[]) {
     INT iMsgResult = 0;
     HHOOK hKeyboardHook = NULL;
 
+    TARGET_MODE eTargetMode = TARGET_MODE_INVALID;
+
+    if (argc >= 2) {
+        if (EXIT_SUCCESS == strcmp(argv[1], "--single")) {
+            eTargetMode = TARGET_MODE_SINGLEPLAYER;
+        } else if (EXIT_SUCCESS == strcmp(argv[1], "--multi")) {
+            eTargetMode = TARGET_MODE_MULTIPLAYER;
+        } else {
+            fprintf(
+                stderr,
+                "[-] Invalid target mode.\n"
+            );
+        }
+    }
+
     printf(
         "*****************************************************\n"
         "***** Need for Speed Heat : Heat-HShifter v2   ******\n"
@@ -397,7 +445,7 @@ int main(int argc, const char *argv[]) {
         "[*] Initializing Shifter...\n"
     );
 
-    if (!InitShifter()) {
+    if (!InitShifter(eTargetMode)) {
         fprintf(
             stderr,
             "[-] Unable to initialize shifter.\n"

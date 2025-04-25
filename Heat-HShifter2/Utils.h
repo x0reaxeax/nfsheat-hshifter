@@ -39,6 +39,10 @@
 #define AOBSCAN_HIGH_ADDRESS_LIMIT              0x2FFFFFFFFULL
 #define AOBSCAN_SCAN_CHUNK_SIZE                 0x40000U        // 256KB
 
+#define AOBSCAN_CURRENT_GEAR_PLAYER_OFFSET      0x26C
+#define AOBSCAN_CURRENT_GEAR_LOCALPLAYER        0x7F7FFFFF
+#define AOBSCAN_LAST_GEAR_NETPLAYER_OFFSET      0x28
+
 //#define HEAT_LAST_GEAR_ADDRESS_OFFSET           0x6A8
 //#define HEAT_LAST_GEAR_ADDRESS_OFFSET_SECONDARY 0x428
 //#define HEAT_CURRENT_GEAR_ADDRESS_OFFSET        0x53D0
@@ -70,11 +74,19 @@ typedef enum _TARGET_GEAR {
     TARGET_GEAR_LAST
 } TARGET_GEAR, *LPTARGET_GEAR;
 
+typedef enum _TARGET_MODE {
+    TARGET_MODE_SINGLEPLAYER = 0,
+    TARGET_MODE_MULTIPLAYER,
+    TARGET_MODE_INVALID = 0xFFFFFFFF
+} TARGET_MODE, *LPTARGET_MODE;
+
 typedef struct _SHIFTER_CONFIG {
     HANDLE hGameProcess;
     DWORD dwGameProcessId;
 
     DWORD dwCurrentGear;
+
+    TARGET_MODE eTargetMode;
     
     HANDLE hConsoleWindow;
     HANDLE hGearConsoleWindow;
@@ -114,12 +126,14 @@ LPVOID GetGearRegionAddressBase(
 /// </summary>
 /// <param name="abyPattern"></param>
 /// <param name="cbPatternSize"></param>
+/// <param name="eTargetGear"></param>
 /// <returns>
 ///   Address of the signature/artifact if found, NULL on failure.
 /// </returns>
 LPCVOID AobScan(
     LPCBYTE abyPattern,
-    CONST SIZE_T cbPatternSize
+    CONST SIZE_T cbPatternSize,
+    TARGET_GEAR eTargetGear
 );
 
 DWORD ReadGear(
