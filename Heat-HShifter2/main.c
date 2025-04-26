@@ -66,6 +66,35 @@ STATIC BOOLEAN ScanForGearAddresses(
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
     };
 
+    // Set higher priority class, since Win11 seems to bully the program
+
+    printf("[*] Adjusting process priority class..\n");
+
+    DWORD dwPriorityClass = GetPriorityClass(
+        GetCurrentProcess()
+    );
+
+    if (0 == dwPriorityClass) {
+        fprintf(
+            stderr,
+            "[-] GetPriorityClass(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    if (!SetPriorityClass(
+        GetCurrentProcess(),
+        HIGH_PRIORITY_CLASS
+    )) {
+        fprintf(
+            stderr,
+            "[-] SetPriorityClass(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
     LPCVOID lpCurrentGearArtifact = AobScan(
         abCurrentGearPattern,
         sizeof(abCurrentGearPattern),
@@ -105,6 +134,22 @@ STATIC BOOLEAN ScanForGearAddresses(
         "[+] Memory artifact address (previous gear): 0x%llX\n",
         (DWORD64) lpLastGearArtifact
     );
+
+    // Revert prority priority class
+    printf(
+        "[*] Reverting process priority class..\n"
+    );
+    if (!SetPriorityClass(
+        GetCurrentProcess(),
+        dwPriorityClass
+    )) {
+        fprintf(
+            stderr,
+            "[-] SetPriorityClass(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
 
     g_ShifterConfig.lpCurrentGearAddress = (LPVOID) (
         (DWORD64) lpCurrentGearArtifact +
