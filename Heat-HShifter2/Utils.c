@@ -22,10 +22,14 @@
 
 #include <Windows.h>
 #include <TlHelp32.h>
+#include <ShlObj.h>
+#include <Shlwapi.h>
 
 #include <stdio.h>
 
 #include "Utils.h"
+
+#pragma comment (lib, "Shlwapi.lib")
 
 DWORD GetGameProcessId(
     LPCWSTR wszProcessName
@@ -64,6 +68,211 @@ DWORD GetGameProcessId(
 
     CloseHandle(hSnapshot);
     return dwPid;
+}
+
+BOOLEAN CreateConfig(
+    VOID
+) {
+    HRESULT hResult;
+    LPWSTR wszPath = NULL;
+
+    hResult = SHGetKnownFolderPath(
+        &CONFIG_KNOWNFOLDERID_GUID,
+        0,
+        NULL,
+        &wszPath
+    );
+
+    if (FAILED(hResult)) {
+        fprintf(
+            stderr,
+            "[-] SHGetKnownFolderPath(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    WCHAR wszDirPath[MAX_PATH] = { 0 };
+    if (!PathCombineW(
+        wszDirPath,
+        wszPath,
+        CONFIG_DIRECTORY_NAME
+    )) {
+        fprintf(
+            stderr,
+            "[-] PathCombineW(): E%lu\n",
+            GetLastError()
+        );
+        CoTaskMemFree(wszPath);
+        return FALSE;
+    }
+
+    if (!PathFileExistsW(wszDirPath)) {
+        if (!CreateDirectoryW(
+            wszDirPath,
+            NULL
+        )) {
+            fprintf(
+                stderr,
+                "[-] CreateDirectoryW(): E%lu\n",
+                GetLastError()
+            );
+            CoTaskMemFree(wszPath);
+            return FALSE;
+        }
+        wprintf(
+            L"[*] Created config directory: '%s'\n",
+            wszDirPath
+        );
+    }
+
+    WCHAR wszConfigPath[MAX_PATH] = {0};
+    if (!PathCombineW(
+        wszConfigPath,
+        wszDirPath,
+        CONFIG_FILE_NAME
+    )) {
+        fprintf(
+            stderr,
+            "[-] PathCombineW(): E%lu\n",
+            GetLastError()
+        );
+        CoTaskMemFree(wszPath);
+        return FALSE;
+    }
+
+    memcpy(
+        g_ShifterConfig.wszConfigFilePath,
+        wszConfigPath,
+        sizeof(g_ShifterConfig.wszConfigFilePath)
+    );
+
+    CoTaskMemFree(wszPath);
+
+    if (PathFileExistsW(wszConfigPath)) {
+        wprintf(
+            L"[*] Config file found: '%s'\n",
+            wszConfigPath
+        );
+        return TRUE;
+    }
+
+    HANDLE hFile = CreateFileW(
+        wszConfigPath,
+        GENERIC_WRITE,
+        0,
+        NULL,
+        CREATE_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL
+    );
+
+    if (INVALID_HANDLE_VALUE == hFile) {
+        fprintf(
+            stderr,
+            "[-] CreateFileW(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    CHAR szConfigData[] = {
+        "[CONFIG]\n"
+        "GEAR_REVERSE=0x30\n"
+        "GEAR_NEUTRAL=0x31\n"
+        "GEAR_1=0x32\n"
+        "GEAR_2=0x33\n"
+        "GEAR_3=0x34\n"
+        "GEAR_4=0x35\n"
+        "GEAR_5=0x36\n"
+        "GEAR_6=0x37\n"
+        "GEAR_7=0x38\n"
+        "GEAR_8=0x39\n"
+    };
+
+    DWORD dwBytesWritten = 0;
+    if (!WriteFile(
+        hFile,
+        szConfigData,
+        sizeof(szConfigData) - 1,
+        &dwBytesWritten,
+        NULL
+    )) {
+        fprintf(
+            stderr,
+            "[-] WriteFile(): E%lu\n",
+            GetLastError()
+        );
+        CloseHandle(hFile);
+        return FALSE;
+    }
+
+    wprintf(
+        L"[*] Created config file: '%s'\n",
+        wszConfigPath
+    );
+
+    CloseHandle(hFile);
+
+    return TRUE;
+}
+
+VOID LoadConfig(
+    VOID
+) {
+    CONST WCHAR awszGearNames[GEAR_8 + 1][64] = { 
+        L"GEAR_REVERSE",
+        L"GEAR_NEUTRAL",
+        L"GEAR_1",
+        L"GEAR_2",
+        L"GEAR_3",
+        L"GEAR_4",
+        L"GEAR_5",
+        L"GEAR_6",
+        L"GEAR_7",
+        L"GEAR_8"
+    };
+
+    for (INT i = 0; i <= GEAR_8; i++) {
+        g_ShifterConfig.KeyboardMap.adwKeyCode[i] = GetPrivateProfileIntW(
+            L"CONFIG",
+            awszGearNames[i],
+            0x30 + i,
+            g_ShifterConfig.wszConfigFilePath
+        );
+    }
+
+    wprintf(
+        L"[+] Loaded config file: '%s'\n",
+        g_ShifterConfig.wszConfigFilePath
+    );
+}
+
+BOOLEAN IsGameWindowForeground(
+    VOID
+) {
+    HWND hWnd = GetForegroundWindow();
+    if (NULL == hWnd) {
+        return FALSE;
+    }
+
+    DWORD dwWindowPid = 0;
+    if (0 == GetWindowThreadProcessId(
+        hWnd,
+        &dwWindowPid
+    )) {
+        fprintf(
+            stderr,
+            "[-] GetWindowThreadProcessId(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    return (
+        dwWindowPid == g_ShifterConfig.dwGameProcessId
+        || dwWindowPid == g_ShifterConfig.dwShifterProcessId
+    );
 }
 
 VOID ClearScreen(
@@ -143,6 +352,101 @@ VOID ClearScreen(
     }
 }
 
+BOOLEAN ChangeModePrompt(
+    VOID
+) {
+    CHAR szInput[4] = { 0 }; // for swallowing newline
+
+    printf(
+        "[*] Select target mode:\n"
+        "[1] Singleplayer\n"
+        "[2] Multiplayer\n"
+        "[$]: "
+    );
+    if (NULL == fgets(
+        szInput,
+        sizeof(szInput),
+        stdin
+    )) {
+        fprintf(
+            stderr,
+            "[-] fgets(): E%d\n",
+            errno
+        );
+        return FALSE;
+    }
+
+    switch (szInput[0]) {
+        case '1':
+            g_ShifterConfig.eTargetMode = TARGET_MODE_SINGLEPLAYER;
+            break;
+        case '2':
+            g_ShifterConfig.eTargetMode = TARGET_MODE_MULTIPLAYER;
+            break;
+        default:
+            return FALSE;
+    }
+
+    return TRUE;
+}
+
+VOID SwitchWindows(
+    VOID
+) {
+
+    g_ShifterConfig.dwCurrentGear = ReadCurrentGear();
+
+    HANDLE hTargetConsole = NULL;
+
+    if (g_ShifterConfig.bGearWindowEnabled && g_ShifterConfig.bIsGearWindowVisible) {
+        hTargetConsole = g_ShifterConfig.hConsoleWindow;
+    } else if (g_ShifterConfig.bIsMainWindowVisible) {
+        hTargetConsole = g_ShifterConfig.hGearConsoleWindow;
+    } else {
+        hTargetConsole = g_ShifterConfig.hConsoleWindow;
+    }
+
+    if (!SetConsoleActiveScreenBuffer(
+        hTargetConsole
+    )) {
+        fprintf(
+            stderr,
+            "[-] SetConsoleActiveScreenBuffer(): E%lu\n",
+            GetLastError()
+        );
+        return;
+    }
+
+    if (hTargetConsole == g_ShifterConfig.hConsoleWindow) {
+        g_ShifterConfig.bIsMainWindowVisible = TRUE;
+        g_ShifterConfig.bIsGearWindowVisible = FALSE;
+    } else {
+        g_ShifterConfig.bIsMainWindowVisible = FALSE;
+        g_ShifterConfig.bIsGearWindowVisible = TRUE;
+
+        DrawAsciiGearDisplay();
+    }
+}
+
+BOOLEAN SetMainWindowVisible(
+    VOID
+) {
+    if (!SetConsoleActiveScreenBuffer(
+        g_ShifterConfig.hConsoleWindow
+    )) {
+        fprintf(
+            stderr,
+            "[-] SetConsoleActiveScreenBuffer(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    g_ShifterConfig.bIsMainWindowVisible = TRUE;
+    g_ShifterConfig.bIsGearWindowVisible = FALSE;
+    return TRUE;
+}
+
 VOID DrawAsciiGearDisplay(
     VOID
 ) {
@@ -173,13 +477,14 @@ VOID DrawAsciiGearDisplay(
     snprintf(
         szOutputBuffer, 
         sizeof(szOutputBuffer),
-        "[ *****> HEAT H-Shifter v2.0 <***** ]\n"
-        "[ --------------------------------- ]\n"
-        "[ 0 - 9  - Gear Control             ]\n"
-        "[ INSERT - Toggle Gear/Main Window  ]\n"
-        "[ DELETE - Rescan Gear Addresses    ]\n"
-        "[ END    - Exit H-Shifter           ]\n"
-        "[***********************************]\n"
+        "[ ******> HEAT H-Shifter v2.0 <****** ]\n"
+        "[ ----------------------------------- ]\n"
+        "[ 0 - 9  - Gear Control               ]\n"
+        "[ INSERT - Toggle Gear/Main Window    ]\n"
+        "[ DELETE - Rescan Gear Addresses      ]\n"
+        "[ HOME   - Switch Single/Multiplayer  ]\n"
+        "[ END    - Exit H-Shifter             ]\n"
+        "[*************************************]\n"
         "\n"
         "\n"
         "        ___________\n"

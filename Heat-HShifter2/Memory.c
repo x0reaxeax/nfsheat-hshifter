@@ -119,101 +119,77 @@ STATIC INLINE BOOLEAN IsAddressStateValid(
     return TRUE;
 }
 
-STATIC BOOLEAN VerifyPlayerCurrentGear(
-    LPCVOID lpcCurrentArtifactAddress
+STATIC BOOLEAN AreDwordsUnique(
+    CONST LPDWORD adwArray,
+    CONST SIZE_T dwMembCount
 ) {
-    LPCVOID lpTargetAddress = (LPCVOID) (
-        (DWORD64) lpcCurrentArtifactAddress + 0xB4
-    );
-
-    DWORD dwRead1, dwRead2;
-    SIZE_T cbBytesRead = 0;
-
-    if (!ReadProcessMemory(
-        g_ShifterConfig.hGameProcess,
-        lpTargetAddress,
-        &dwRead1,
-        sizeof(DWORD),
-        &cbBytesRead
-    )) {
-        fprintf(
-            stderr,
-            "[-] ReadProcessMemory(): E%lu\n",
-            GetLastError()
-        );
-        return FALSE;
+    for (SIZE_T i = 0; i < dwMembCount; ++i) {
+        for (SIZE_T j = i + 1; j < dwMembCount; ++j) {
+            if (adwArray[i] == adwArray[j]) {
+                return FALSE;
+            }
+        }
     }
-
-    Sleep(500);
-
-    if (!ReadProcessMemory(
-        g_ShifterConfig.hGameProcess,
-        lpTargetAddress,
-        &dwRead2,
-        sizeof(DWORD),
-        &cbBytesRead
-    )) {
-        fprintf(
-            stderr,
-            "[-] ReadProcessMemory(): E%lu\n",
-            GetLastError()
-        );
-        return FALSE;
-    }
-
-    if (dwRead1 == dwRead2) {
-        return FALSE;
-    }
-
     return TRUE;
 }
 
-STATIC BOOLEAN VerifyPlayerLastGear(
-    LPCVOID lpcCurrentArtifactAddress
+STATIC BOOLEAN VerifyPlayerGear(
+    LPCVOID lpcCurrentArtifactAddress,
+    TARGET_GEAR eTargetGear
 ) {
-    LPCVOID lpcTargetAddress = (LPCVOID) (
-        (DWORD64)lpcCurrentArtifactAddress - 0xC
-    );
+    LPCVOID lpcTargetAddress = NULL;
+    
+    switch (eTargetGear) {
+        case TARGET_GEAR_CURRENT:
+            lpcTargetAddress = (LPCVOID) (
+                (DWORD64) lpcCurrentArtifactAddress + AOBSCAN_CURRENT_GEAR_LIVE_MEMORY_OFFSET
+            );
+            break;
 
+        case TARGET_GEAR_LAST:
+            lpcTargetAddress = (LPCVOID) (
+                (DWORD64) lpcCurrentArtifactAddress - AOBSCAN_LAST_GEAR_LIVE_MEMORY_OFFSET
+            );
+            break;
+
+        default:
+            fprintf(
+                stderr,
+                "[-] Invalid target gear: %d\n",
+                eTargetGear
+            );
+            return FALSE;
+    }
+
+    DWORD adwReads[AOBSCAN_LIVE_MEMORY_ITERATIONS] = { 0 };
     SIZE_T cbBytesRead = 0;
-    DWORD dwRead1, dwRead2;
 
-    if (!ReadProcessMemory(
-        g_ShifterConfig.hGameProcess,
-        lpcTargetAddress,
-        &dwRead1,
-        sizeof(DWORD),
-        &cbBytesRead
-    )) {
-        fprintf(
-            stderr,
-            "[-] ReadProcessMemory(): E%lu\n",
-            GetLastError()
-        );
-        return FALSE;
-    }
+    for (INT i = 0; i < AOBSCAN_LIVE_MEMORY_ITERATIONS; ++i) {
+        if (!ReadProcessMemory(
+            g_ShifterConfig.hGameProcess,
+            lpcTargetAddress,
+            &adwReads[i],
+            sizeof(DWORD),
+            &cbBytesRead
+        )) {
+            fprintf(
+                stderr,
+                "[-] ReadProcessMemory(): E%lu\n",
+                GetLastError()
+            );
+            return FALSE;
+        }
 
-    Sleep(500);
-
-    if (!ReadProcessMemory(
-        g_ShifterConfig.hGameProcess,
-        (LPCVOID) dwRead1,
-        &dwRead2,
-        sizeof(DWORD),
-        &cbBytesRead
-    )) {
-        fprintf(
-            stderr,
-            "[-] ReadProcessMemory(): E%lu\n",
-            GetLastError()
-        );
-        return FALSE;
-    }
-
-    if (dwRead1 == dwRead2) {
-        return FALSE;
+        Sleep(AOBSCAN_LIVE_MEMORY_DELAY_MS);
     }
     
+    if (!AreDwordsUnique(
+        adwReads,
+        AOBSCAN_LIVE_MEMORY_ITERATIONS
+    )) {
+        return FALSE;
+    }
+
     return TRUE;
 }
 
@@ -274,8 +250,13 @@ LPCVOID AobScan(
         LPCBYTE lpRegionBase = (LPCBYTE)memInfo.BaseAddress;
         SIZE_T cbRegionSize = memInfo.RegionSize;
 
-        for (DWORD64 qwOffset = 0; qwOffset < cbRegionSize; qwOffset += AOBSCAN_SCAN_CHUNK_SIZE) {
-            SIZE_T cbChunkSize = ((cbRegionSize - qwOffset) > AOBSCAN_SCAN_CHUNK_SIZE) 
+        for (
+            DWORD64 qwOffset = 0; 
+            qwOffset < cbRegionSize; 
+            qwOffset += AOBSCAN_SCAN_CHUNK_SIZE
+        ) {
+            SIZE_T cbChunkSize = 
+                ((cbRegionSize - qwOffset) > AOBSCAN_SCAN_CHUNK_SIZE) 
                 ? AOBSCAN_SCAN_CHUNK_SIZE 
                 : (cbRegionSize - qwOffset);
 
@@ -303,14 +284,11 @@ LPCVOID AobScan(
                 )) {
                     LPCVOID lpTempMatch = lpChunkAddr + qwIndex;
                     if (TARGET_MODE_MULTIPLAYER == g_ShifterConfig.eTargetMode) {
-                        if (TARGET_GEAR_CURRENT == eTargetGear) {
-                            if (!VerifyPlayerCurrentGear(lpTempMatch)) {
-                                continue;
-                            }
-                        } else {
-                            if (!VerifyPlayerLastGear(lpTempMatch)) {
-                                continue;
-                            }
+                        if (!VerifyPlayerGear(
+                            lpTempMatch,
+                            eTargetGear
+                        )) {
+                            continue;
                         }
                     }
 
@@ -336,10 +314,10 @@ _FINAL:
     return lpAobMatch;
 }
 
-DWORD ReadGear(
+SHIFT_GEAR ReadGear(
     CONST TARGET_GEAR eTargetGear
 ) {
-    DWORD dwTargetGear = 0;
+    SHIFT_GEAR eGearValue = 0;
     SIZE_T cbBytesRead = 0;
 
     LPCVOID lpTargetAddress = (TARGET_GEAR_CURRENT == eTargetGear) 
@@ -350,7 +328,7 @@ DWORD ReadGear(
     if (!ReadProcessMemory(
         g_ShifterConfig.hGameProcess,
         lpTargetAddress,
-        &dwTargetGear,
+        &eGearValue,
         sizeof(DWORD),
         &cbBytesRead
     )) {
@@ -362,5 +340,5 @@ DWORD ReadGear(
         return GEAR_INVALID;
     }
 
-    return dwTargetGear;
+    return eGearValue;
 }

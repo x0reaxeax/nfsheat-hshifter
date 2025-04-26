@@ -25,6 +25,7 @@
 ///    *  - 0-9: Change gear (NOT NUMPAD!!)
 ///    *  - INSERT: Toggle between the gear display and the main console window
 ///    *  - DELETE: Re-scan for gear addresses (do this every time you enter and exit garage)
+///    *  - HOME:   Switch between singleplayer and multiplayer mode
 ///    *  - END: Exit the program
 ///  
 /// 
@@ -39,6 +40,9 @@
 
 // Verifies written gear value, but causes a 75ms delay
 #define ENABLE_GEAR_VALIDATION
+
+// Checks if the game window is in the foreground before processing key events
+#define ENABLE_FOREGROUND_CHECK
 
 GLOBAL SHIFTER_CONFIG g_ShifterConfig = { 0 };
 
@@ -120,12 +124,27 @@ STATIC BOOLEAN ScanForGearAddresses(
 STATIC BOOLEAN InitShifter(
     TARGET_MODE eTargetMode
 ) {
+    // Default gear state
     g_ShifterConfig.dwCurrentGear = GEAR_1;
+
+    // Enable ASCII gear display mode
     g_ShifterConfig.bGearWindowEnabled = TRUE;
 
     g_ShifterConfig.dwGameProcessId = GetGameProcessId(
         L"NeedForSpeedHeat.exe"
     );
+
+    ZeroMemory(
+        &g_ShifterConfig.KeyboardMap,
+        sizeof(KEYBOARD_MAP)
+    );
+
+    ZeroMemory(
+        &g_ShifterConfig.wszConfigFilePath,
+        sizeof(g_ShifterConfig.wszConfigFilePath)
+    );
+
+    g_ShifterConfig.dwShifterProcessId = GetCurrentProcessId();
 
     if (0 == g_ShifterConfig.dwGameProcessId) {
         fprintf(
@@ -154,6 +173,7 @@ STATIC BOOLEAN InitShifter(
         return FALSE;
     }
 
+    // Get handle of the main console window
     g_ShifterConfig.hConsoleWindow = GetStdHandle(STD_OUTPUT_HANDLE);
     if (INVALID_HANDLE_VALUE == g_ShifterConfig.hConsoleWindow) {
         fprintf(
@@ -164,6 +184,8 @@ STATIC BOOLEAN InitShifter(
         return FALSE;
     }
 
+    // Create a new console screen buffer for the gear display,
+    // even if it's not going to be used (for future purposes)
     g_ShifterConfig.hGearConsoleWindow = CreateConsoleScreenBuffer(
         GENERIC_READ | GENERIC_WRITE,
         0,
@@ -181,35 +203,37 @@ STATIC BOOLEAN InitShifter(
         return FALSE;
     }
 
-    if (TARGET_MODE_INVALID == eTargetMode) {
-        CHAR cInputChar;
-        printf(
-            "[*] Select target mode:\n"
-            "[1] Singleplayer\n"
-            "[2] Multiplayer\n"
-            "[$]: "
+    // Load config file
+    if (!CreateConfig()) {
+        fprintf(
+            stderr,
+            "[-] Config initialization failure.\n"
         );
-        cInputChar = getchar();
+        return FALSE;
+    }
 
-        switch (cInputChar) {
-            case '1':
-                g_ShifterConfig.eTargetMode = TARGET_MODE_SINGLEPLAYER;
-                break;
-            case '2':
-                g_ShifterConfig.eTargetMode = TARGET_MODE_MULTIPLAYER;
-                break;
-            default:
-                fprintf(
-                    stderr,
-                    "[-] Invalid target mode.\n"
-                );
-                return FALSE;
+    LoadConfig();
+
+    printf(
+        "[+] Loaded keyboard map from config file.\n"
+    );
+
+    // Check if a mode argument was passed
+    if (TARGET_MODE_INVALID == eTargetMode) {
+        if (!ChangeModePrompt()) {
+            fprintf(
+                stderr,
+                "[-] Invalid target mode.\n"
+            );
+            return FALSE;
         }
     }
 
     printf(
         "[*] Target mode: %s\n",
-        (TARGET_MODE_SINGLEPLAYER == g_ShifterConfig.eTargetMode) ? "Singleplayer" : "Multiplayer"
+        (TARGET_MODE_SINGLEPLAYER == g_ShifterConfig.eTargetMode) 
+        ? "Singleplayer" 
+        : "Multiplayer"
     );
 
     printf(
@@ -224,16 +248,10 @@ STATIC BOOLEAN InitShifter(
         return FALSE;
     }
 
-    printf(
-        "[+] Current gear address: 0x%llX\n"
-        "[+] Last gear address: 0x%llX\n",
-        (DWORD64) g_ShifterConfig.lpCurrentGearAddress,
-        (DWORD64) g_ShifterConfig.lpLastGearAddress
-    );
-
     CONST DWORD dwCurrentGear = ReadCurrentGear();
     CONST DWORD dwLastGear = ReadLastGear();
 
+    // Both gear values should be the same
     if (dwCurrentGear != dwLastGear) {
         fprintf(
             stderr,
@@ -244,17 +262,22 @@ STATIC BOOLEAN InitShifter(
         return FALSE;
     }
 
+    printf(
+        "[+] Current gear address: 0x%llX\n"
+        "[+] Last gear address: 0x%llX\n",
+        (DWORD64) g_ShifterConfig.lpCurrentGearAddress,
+        (DWORD64) g_ShifterConfig.lpLastGearAddress
+    );
+    
     return TRUE;
 }
 
 STATIC BOOL ShiftGear(
     SHIFT_GEAR eTargetGear
 ) {
-
     SIZE_T cbBytesWritten = 0;
 
     // Writes go ASAP
-
     if (!WriteProcessMemory(
         g_ShifterConfig.hGameProcess,
         g_ShifterConfig.lpCurrentGearAddress,
@@ -288,9 +311,12 @@ STATIC BOOL ShiftGear(
 #ifdef ENABLE_GEAR_VALIDATION
     // Give the game some time to (in/)validate gear change
     Sleep(75);
-#endif
 
-    g_ShifterConfig.dwCurrentGear = ReadCurrentGear();//eTargetGear;
+    // Read gear value from game memory
+    g_ShifterConfig.dwCurrentGear = ReadCurrentGear();
+#else
+    g_ShifterConfig.dwCurrentGear = eTargetGear;
+#endif
 
     if (g_ShifterConfig.bGearWindowEnabled) {
         DrawAsciiGearDisplay();
@@ -299,61 +325,16 @@ STATIC BOOL ShiftGear(
     return TRUE;
 }
 
-VOID SwitchWindows(
-    VOID
+STATIC SHIFT_GEAR ConvertKeyMapToGear(
+    DWORD dwKeyCode
 ) {
-
-    g_ShifterConfig.dwCurrentGear = ReadCurrentGear();
-
-    HANDLE hTargetConsole = NULL;
-
-    if (g_ShifterConfig.bGearWindowEnabled && g_ShifterConfig.bIsGearWindowVisible) {
-        hTargetConsole = g_ShifterConfig.hConsoleWindow;
-    } else if (g_ShifterConfig.bIsMainWindowVisible) {
-        hTargetConsole = g_ShifterConfig.hGearConsoleWindow;
-    } else {
-        hTargetConsole = g_ShifterConfig.hConsoleWindow;
+    for (INT i = 0; i < ARRAYSIZE(g_ShifterConfig.KeyboardMap.adwKeyCode); ++i) {
+        if (g_ShifterConfig.KeyboardMap.adwKeyCode[i] == dwKeyCode) {
+            return (SHIFT_GEAR) i;
+        }
     }
 
-    if (!SetConsoleActiveScreenBuffer(
-        hTargetConsole
-    )) {
-        fprintf(
-            stderr,
-            "[-] SetConsoleActiveScreenBuffer(): E%lu\n",
-            GetLastError()
-        );
-        return;
-    }
-
-    if (hTargetConsole == g_ShifterConfig.hConsoleWindow) {
-        g_ShifterConfig.bIsMainWindowVisible = TRUE;
-        g_ShifterConfig.bIsGearWindowVisible = FALSE;
-    } else {
-        g_ShifterConfig.bIsMainWindowVisible = FALSE;
-        g_ShifterConfig.bIsGearWindowVisible = TRUE;
-
-        DrawAsciiGearDisplay();
-    }
-}
-
-STATIC BOOLEAN SetMainWindowVisible(
-    VOID
-) {
-    if (!SetConsoleActiveScreenBuffer(
-        g_ShifterConfig.hConsoleWindow
-    )) {
-        fprintf(
-            stderr,
-            "[-] SetConsoleActiveScreenBuffer(): E%lu\n",
-            GetLastError()
-        );
-        return FALSE;
-    }
-
-    g_ShifterConfig.bIsMainWindowVisible = TRUE;
-    g_ShifterConfig.bIsGearWindowVisible = FALSE;
-    return TRUE;
+    return GEAR_INVALID;
 }
 
 INT64 CALLBACK KeyboardHookProc(
@@ -362,6 +343,7 @@ INT64 CALLBACK KeyboardHookProc(
     LPARAM lParam
 ) {
     LPKBDLLHOOKSTRUCT lpKbdHookStruct = (LPKBDLLHOOKSTRUCT) lParam;
+    SHIFT_GEAR eTargetGear;
 
     if (HC_ACTION != nCode) {
         goto _NEXT_HOOK;
@@ -371,38 +353,87 @@ INT64 CALLBACK KeyboardHookProc(
         goto _NEXT_HOOK;
     }
 
-    if (VK_END == lpKbdHookStruct->vkCode) {
-        PostQuitMessage(EXIT_SUCCESS);
+    if (!IsGameWindowForeground()) {
         goto _NEXT_HOOK;
     }
 
-    if (VK_DELETE == lpKbdHookStruct->vkCode) {
-        SetMainWindowVisible();
+    eTargetGear = ConvertKeyMapToGear(
+        lpKbdHookStruct->vkCode
+    );
 
-        if (!ScanForGearAddresses()) {
-            fprintf(
-                stderr,
-                "[-] Unable to find gear addresses.\n"
-            );
-            PostQuitMessage(EXIT_FAILURE);
-        }
-
-        if (g_ShifterConfig.bGearWindowEnabled) {
-            SwitchWindows();
-        }
-
-        goto _NEXT_HOOK;
-    }
-
-    if (VK_INSERT == lpKbdHookStruct->vkCode) {
-        SwitchWindows();
-        goto _NEXT_HOOK;
-    }
-
-    if ((lpKbdHookStruct->vkCode >= 0x30 && lpKbdHookStruct->vkCode <= 0x38)) {
+    if (GEAR_INVALID != eTargetGear) {
         ShiftGear(
-            (SHIFT_GEAR) (lpKbdHookStruct->vkCode - 0x30)
+            eTargetGear
         );
+
+        goto _NEXT_HOOK;
+    }
+
+    switch (lpKbdHookStruct->vkCode) {
+        case VK_END: {
+            // Exit the program
+            PostQuitMessage(EXIT_SUCCESS);
+            break;
+        }
+
+        case VK_HOME: {
+            // Switch between singleplayer and multiplayer mode
+            SetMainWindowVisible();
+
+            printf("[*] Switching target mode..\n");
+
+            if (!ChangeModePrompt()) {
+                fprintf(
+                    stderr,
+                    "[-] Invalid target mode.\n"
+                );
+
+                goto _NEXT_HOOK;
+            }
+
+            if (!ScanForGearAddresses()) {
+                fprintf(
+                    stderr,
+                    "[-] Unable to find gear addresses.\n"
+                );
+                PostQuitMessage(EXIT_FAILURE);
+            }
+
+            if (g_ShifterConfig.bGearWindowEnabled) {
+                SwitchWindows();
+            }
+
+            g_ShifterConfig.dwCurrentGear = ReadCurrentGear();
+            break;
+        }
+
+        case VK_DELETE: {
+            // Re-scan for gear addresses
+            SetMainWindowVisible();
+
+            if (!ScanForGearAddresses()) {
+                fprintf(
+                    stderr,
+                    "[-] Unable to find gear addresses.\n"
+                );
+                PostQuitMessage(EXIT_FAILURE);
+            }
+
+            if (g_ShifterConfig.bGearWindowEnabled) {
+                SwitchWindows();
+            }
+            break;
+        }
+
+        case VK_INSERT: {
+            // Switch between the main console window and the gear display window
+            SwitchWindows();
+            break;
+        }
+
+        default: {
+            break;
+        }
     }
 
 _NEXT_HOOK:
@@ -450,9 +481,9 @@ int main(int argc, const char *argv[]) {
             stderr,
             "[-] Unable to initialize shifter.\n"
         );
+        system("pause");
         return EXIT_FAILURE;
     }
-
 
     printf("[+] Shifter initialized.\n");
 
@@ -469,13 +500,13 @@ int main(int argc, const char *argv[]) {
             "[-] SetWindowsHookExA(): E%lu\n",
             GetLastError()
         );
+        system("pause");
         return EXIT_FAILURE;
     }
 
     printf(
         "[+] Registered low-level keyboard hook.\n"
     );
-
 
     if (g_ShifterConfig.bGearWindowEnabled) {
         printf("[*] Switching to gear display console window..\n");
@@ -488,6 +519,7 @@ int main(int argc, const char *argv[]) {
                 "[-] SetConsoleActiveScreenBuffer(): E%lu\n",
                 GetLastError()
             );
+            system("pause");
             return EXIT_FAILURE;
         }
     }

@@ -22,6 +22,7 @@
 #define _HEAT_HSHIFTER2_GAMEHELPER_H
 
 #include <Windows.h>
+#include <KnownFolders.h>
 
 #define GLOBAL
 #define VOLATILE    volatile
@@ -30,26 +31,23 @@
 
 #define PAGE_SIZE   0x1000
 
+#define CONFIG_KNOWNFOLDERID_GUID               FOLDERID_Documents   // AppDataDocuments
+#define CONFIG_DIRECTORY_NAME                   L"Heat-HShifter2"
+#define CONFIG_FILE_NAME                        L"config.ini"
+
 #define HEAT_GEAR_ADDRESS_NIBBLE                0x8
 #define HEAT_LAST_GEAR_ADDRESS_NIBBLE           0x0
 #define HEAT_CURRENT_GEAR_ARTIFACT_OFFSET       0x98
 #define HEAT_LAST_GEAR_ARTIFACT_OFFSET          0x48
 
-#define AOBSCAN_LOW_ADDRESS_LIMIT               0x92400000ULL
+#define AOBSCAN_LOW_ADDRESS_LIMIT               0x10000ULL//0x92400000ULL
 #define AOBSCAN_HIGH_ADDRESS_LIMIT              0x2FFFFFFFFULL
 #define AOBSCAN_SCAN_CHUNK_SIZE                 0x40000U        // 256KB
 
-#define AOBSCAN_CURRENT_GEAR_PLAYER_OFFSET      0x26C
-#define AOBSCAN_CURRENT_GEAR_LOCALPLAYER        0x7F7FFFFF
-#define AOBSCAN_LAST_GEAR_NETPLAYER_OFFSET      0x28
-
-//#define HEAT_LAST_GEAR_ADDRESS_OFFSET           0x6A8
-//#define HEAT_LAST_GEAR_ADDRESS_OFFSET_SECONDARY 0x428
-//#define HEAT_CURRENT_GEAR_ADDRESS_OFFSET        0x53D0
-//#define HEAT_ARTIFACT_VEHICLE_PHYSICS_JOB_STR   "vehiclePhysicsJob"
-
-//#define HEAT_GEAR_ADDRESS_REGION_SIZE           0x20000000U // 512MB
-//#define HEAT_SECONDARY_GEAR_ADDRESS_REGION_SIZE 0x20F0000   //0x1040000U
+#define AOBSCAN_CURRENT_GEAR_LIVE_MEMORY_OFFSET 0xB4            // To be added
+#define AOBSCAN_LAST_GEAR_LIVE_MEMORY_OFFSET    0xC             // To be subtracted
+#define AOBSCAN_LIVE_MEMORY_ITERATIONS          3               // Number of different live memory values to check
+#define AOBSCAN_LIVE_MEMORY_DELAY_MS            350             // Delay between each live memory check
 
 #define GET_NIBBLE(value) \
     ((value) & 0x0F) << 4 | \
@@ -71,7 +69,8 @@ typedef enum _SHIFT_GEAR {
 
 typedef enum _TARGET_GEAR {
     TARGET_GEAR_CURRENT = 0,
-    TARGET_GEAR_LAST
+    TARGET_GEAR_LAST,
+    TARGET_GEAR_INVALID = 0xFFFFFFFF
 } TARGET_GEAR, *LPTARGET_GEAR;
 
 typedef enum _TARGET_MODE {
@@ -80,9 +79,14 @@ typedef enum _TARGET_MODE {
     TARGET_MODE_INVALID = 0xFFFFFFFF
 } TARGET_MODE, *LPTARGET_MODE;
 
+typedef struct _KEYBOARD_MAP {
+    DWORD adwKeyCode[GEAR_8 + 1];
+} KEYBOARD_MAP, *LPKEYBOARD_MAP;
+
 typedef struct _SHIFTER_CONFIG {
     HANDLE hGameProcess;
     DWORD dwGameProcessId;
+    DWORD dwShifterProcessId;
 
     DWORD dwCurrentGear;
 
@@ -93,6 +97,9 @@ typedef struct _SHIFTER_CONFIG {
     BOOLEAN bGearWindowEnabled;
     BOOLEAN bIsMainWindowVisible;
     BOOLEAN bIsGearWindowVisible;
+
+    KEYBOARD_MAP KeyboardMap;   // WIP config remapping
+    WCHAR wszConfigFilePath[MAX_PATH];
 
     LPVOID lpCurrentGearAddress;
     LPVOID lpLastGearAddress;
@@ -112,16 +119,6 @@ DWORD GetGameProcessId(
 );
 
 /// <summary>
-///  Retrieves base address of the target gear region.
-/// </summary>
-/// <returns>
-///  Base address of the target gear region if found, NULL on failure.
-/// </returns>
-LPVOID GetGearRegionAddressBase(
-    VOID
-);
-
-/// <summary>
 ///  Scans target memory for a known signature/artifact.
 /// </summary>
 /// <param name="abyPattern"></param>
@@ -136,7 +133,13 @@ LPCVOID AobScan(
     TARGET_GEAR eTargetGear
 );
 
-DWORD ReadGear(
+/// <summary>
+///  Reads the current or last gear value from the target memory.
+/// </summary>
+/// <param name="eTargetGear"></param>
+/// <returns>
+///  Current or last gear value if found, GEAR_INVALID on failure.
+SHIFT_GEAR ReadGear(
     CONST TARGET_GEAR eTargetGear
 );
 
@@ -145,11 +148,63 @@ DWORD ReadGear(
 #define ReadLastGear() \
     ReadGear(TARGET_GEAR_LAST)
 
+/// <summary>
+///  Prompts the user to select the target mode.
+/// </summary>
+/// /// <returns>
+///  TRUE if the target mode was successfully set, FALSE on failure.
+/// </returns>
+BOOLEAN ChangeModePrompt(
+    VOID
+);
+
+/// <summary>
+///  Switches between the main console window and the gear console window.
+/// </summary>
+VOID SwitchWindows(
+    VOID
+);
+
+/// <summary>
+///  Sets the main console window to be visible.
+/// </summary>
+/// <returns>
+///  TRUE if the main console window was successfully set to be visible, FALSE on failure.
+/// </returns>
+BOOLEAN SetMainWindowVisible(
+    VOID
+);
+
+/// <summary>
+///  Clears target console window.
+/// </summary>
+/// /// <param name="hConsole"></param>
 VOID ClearScreen(
     HANDLE hConsole
 );
 
+/// <summary>
+///  Draws the current gear value in the target console window.
+/// </summary>
 VOID DrawAsciiGearDisplay(
+    VOID
+);
+
+/// <summary>
+///  Checks if the target game window is in the foreground.
+/// </summary>
+/// /// <returns>
+///  TRUE if the target game window is in the foreground, FALSE otherwise.
+/// </returns>
+BOOLEAN IsGameWindowForeground(
+    VOID
+);
+
+BOOLEAN CreateConfig(
+    VOID
+);
+
+VOID LoadConfig(
     VOID
 );
 
