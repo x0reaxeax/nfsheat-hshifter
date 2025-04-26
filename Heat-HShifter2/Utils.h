@@ -37,10 +37,10 @@
 
 #define HEAT_GEAR_ADDRESS_NIBBLE                0x8
 #define HEAT_LAST_GEAR_ADDRESS_NIBBLE           0x0
-#define HEAT_CURRENT_GEAR_ARTIFACT_OFFSET       0x98
+#define HEAT_CURRENT_GEAR_ARTIFACT_OFFSET       0x98            // To be added to artifact
 #define HEAT_LAST_GEAR_ARTIFACT_OFFSET          0x48
 
-#define AOBSCAN_LOW_ADDRESS_LIMIT               0x10000ULL//0x92400000ULL
+#define AOBSCAN_LOW_ADDRESS_LIMIT               0x10000ULL      //0x92400000ULL
 #define AOBSCAN_HIGH_ADDRESS_LIMIT              0x2FFFFFFFFULL
 #define AOBSCAN_SCAN_CHUNK_SIZE                 0x40000U        // 256KB
 
