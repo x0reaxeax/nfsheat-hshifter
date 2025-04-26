@@ -512,7 +512,11 @@ int main(int argc, const char *argv[]) {
         "*****************************************************\n"
         "***** Need for Speed Heat : Heat-HShifter v2   ******\n"
         "*****************************************************\n"
-        "               github.com/x0reaxeax/nfsheat-hshifter\n\n"
+        "               github.com/x0reaxeax/nfsheat-hshifter\n"
+        "                                       v%u.%u.%u  \n\n",
+        HSHIFTER_VERSION_MAJOR,
+        HSHIFTER_VERSION_MINOR,
+        HSHIFTER_VERSION_PATCH
     );
 
     printf(

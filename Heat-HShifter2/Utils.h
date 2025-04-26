@@ -29,6 +29,10 @@
 #define STATIC      static
 #define INLINE      inline
 
+#define HSHIFTER_VERSION_MAJOR           2
+#define HSHIFTER_VERSION_MINOR           0
+#define HSHIFTER_VERSION_PATCH           0
+
 #define PAGE_SIZE   0x1000
 
 #define CONFIG_KNOWNFOLDERID_GUID               FOLDERID_Documents   // AppDataDocuments
@@ -37,17 +41,17 @@
 
 #define HEAT_GEAR_ADDRESS_NIBBLE                0x8
 #define HEAT_LAST_GEAR_ADDRESS_NIBBLE           0x0
-#define HEAT_CURRENT_GEAR_ARTIFACT_OFFSET       0x98            // To be added to artifact
+#define HEAT_CURRENT_GEAR_ARTIFACT_OFFSET       0x98                // To be added to artifact
 #define HEAT_LAST_GEAR_ARTIFACT_OFFSET          0x48
 
 #define AOBSCAN_LOW_ADDRESS_LIMIT               0x10000ULL
 #define AOBSCAN_HIGH_ADDRESS_LIMIT              0x2FFFFFFFFULL
-#define AOBSCAN_SCAN_CHUNK_SIZE                 0x40000U        // 256KB
+#define AOBSCAN_SCAN_CHUNK_SIZE                 0x40000U            // 256KB
 
-#define AOBSCAN_CURRENT_GEAR_LIVE_MEMORY_OFFSET 0xB4            // To be added
-#define AOBSCAN_LAST_GEAR_LIVE_MEMORY_OFFSET    0xC             // To be subtracted
-#define AOBSCAN_LIVE_MEMORY_ITERATIONS          3               // Number of different live memory values to check
-#define AOBSCAN_LIVE_MEMORY_DELAY_MS            350             // Delay between each live memory check
+#define AOBSCAN_CURRENT_GEAR_LIVE_MEMORY_OFFSET 0xB4                // To be added
+#define AOBSCAN_LAST_GEAR_LIVE_MEMORY_OFFSET    0xC                 // To be subtracted
+#define AOBSCAN_LIVE_MEMORY_ITERATIONS          3                   // Number of different live memory values to check
+#define AOBSCAN_LIVE_MEMORY_DELAY_MS            350                 // Delay between each live memory check
 
 #define GET_NIBBLE(value) \
     ((value) & 0x0F) << 4 | \
@@ -200,10 +204,19 @@ BOOLEAN IsGameWindowForeground(
     VOID
 );
 
+/// <summary>
+///  Checks if config file exists, and if not, creates it and saves its path.
+/// </summary>
+/// /// <returns>
+///  TRUE if the config file was successfully created or located, FALSE on failure.
+/// </returns>
 BOOLEAN CreateConfig(
     VOID
 );
 
+/// <summary>
+///  Loads the config file and retrieves the keyboard mapping.
+/// </summary>
 VOID LoadConfig(
     VOID
 );
