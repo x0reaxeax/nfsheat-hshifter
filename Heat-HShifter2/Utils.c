@@ -248,6 +248,47 @@ VOID LoadConfig(
     );
 }
 
+BOOL CALLBACK EnumWindowProc(
+    HWND hwnd,
+    LPARAM lParam
+) {
+    DWORD dwPid = 0;
+    GetWindowThreadProcessId(hwnd, &dwPid);
+
+    if (dwPid == g_ShifterConfig.dwGameProcessId) {
+        g_ShifterConfig.hGameWindow = hwnd;
+        *(PBOOLEAN) lParam = TRUE; // Set found flag
+        return FALSE; // Stop enumeration
+    }
+
+    return TRUE; // Continue enumeration
+}
+
+BOOLEAN FindGameWindow(
+    VOID
+) {
+    if (NULL != g_ShifterConfig.hGameWindow) {
+        // Already found
+        return TRUE;
+    }
+
+    BOOLEAN bFound = FALSE;
+    EnumWindows(
+        EnumWindowProc,
+        (LPARAM) &bFound
+    );
+
+    if (!bFound) {
+        fprintf(
+            stderr,
+            "[-] Game window not found.\n"
+        );
+        return FALSE;
+    }
+    
+    return TRUE;
+}
+
 BOOLEAN IsWindowForeground(
     FOREGROUND_WINDOW eTargetWindow
 ) {

@@ -41,6 +41,7 @@
 
 #define HEAT_GEAR_ADDRESS_NIBBLE                0x8
 #define HEAT_LAST_GEAR_ADDRESS_NIBBLE           0x0
+#define HEAT_CURRENT_GEAR_ARTIFACT_NIBBLE       0x3
 #define HEAT_CURRENT_GEAR_ARTIFACT_OFFSET       0x15                // To be added to artifact
 #define HEAT_LAST_GEAR_ARTIFACT_OFFSET          0x48
 
@@ -53,9 +54,7 @@
 #define AOBSCAN_LIVE_MEMORY_ITERATIONS          3                   // Number of different live memory values to check
 #define AOBSCAN_LIVE_MEMORY_DELAY_MS            350                 // Delay between each live memory check
 
-#define GET_NIBBLE(value) \
-    ((value) & 0x0F) << 4 | \
-    ((value) & 0xF0) >> 4
+#define GET_NIBBLE(value) ((DWORD64)(value) & 0xF)
 
 typedef enum _SHIFT_GEAR {
     GEAR_REVERSE = 0,
@@ -102,6 +101,7 @@ typedef struct _SHIFTER_CONFIG {
 
     TARGET_MODE eTargetMode;
     
+    HWND hGameWindow;
     HANDLE hConsoleWindow;
     HANDLE hGearConsoleWindow;
     BOOLEAN bGearWindowEnabled;
@@ -197,6 +197,17 @@ VOID ClearScreen(
 ///  Draws the current gear value in the target console window.
 /// </summary>
 VOID DrawAsciiGearDisplay(
+    VOID
+);
+
+/// <summary>
+///  Obtains the handle to the target game window.
+/// </summary>
+/// <param name=""></param>
+/// <returns>
+///  TRUE if the target window was successfully found, FALSE on failure.
+/// </returns>
+BOOLEAN FindGameWindow(
     VOID
 );
 

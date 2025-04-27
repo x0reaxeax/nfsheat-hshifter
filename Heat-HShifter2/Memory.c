@@ -198,9 +198,10 @@ STATIC BOOLEAN VerifyPlayerGear(
     TARGET_GEAR eTargetGear
 ) {
     DWORD dwScore = 0;
-    if (IsWindowForeground(
-        FGWIN_GAME
+    if (!IsIconic(
+        g_ShifterConfig.hGameWindow
     )) {
+        // Live memory is only live if the game is not minimized
         if (IsValueLiveMemory(
             lpcCurrentArtifactAddress,
             eTargetGear
@@ -328,6 +329,12 @@ LPCVOID AobScan(
                     cbPatternSize
                 )) {
                     LPCVOID lpTempMatch = lpChunkAddr + qwIndex;
+                    if (TARGET_GEAR_CURRENT == eTargetGear) {
+                        if (HEAT_CURRENT_GEAR_ARTIFACT_NIBBLE != GET_NIBBLE(lpTempMatch)) {
+                            continue;
+                        }
+                    }
+
                     if (TARGET_MODE_MULTIPLAYER == g_ShifterConfig.eTargetMode) {
                         if (!VerifyPlayerGear(
                             lpTempMatch,
