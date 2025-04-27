@@ -444,44 +444,6 @@ VOID ClearScreen(
     }
 }
 
-BOOLEAN ChangeModePrompt(
-    VOID
-) {
-    CHAR szInput[4] = { 0 }; // for swallowing newline
-
-    printf(
-        "[*] Select target mode:\n"
-        "[1] Singleplayer\n"
-        "[2] Multiplayer\n"
-        "[$]: "
-    );
-    if (NULL == fgets(
-        szInput,
-        sizeof(szInput),
-        stdin
-    )) {
-        fprintf(
-            stderr,
-            "[-] fgets(): E%d\n",
-            errno
-        );
-        return FALSE;
-    }
-
-    switch (szInput[0]) {
-        case '1':
-            g_ShifterConfig.eTargetMode = TARGET_MODE_SINGLEPLAYER;
-            break;
-        case '2':
-            g_ShifterConfig.eTargetMode = TARGET_MODE_MULTIPLAYER;
-            break;
-        default:
-            return FALSE;
-    }
-
-    return TRUE;
-}
-
 BOOL ForceForegroundWindow(
     HWND hTargetWindow
 ) {
@@ -651,7 +613,6 @@ VOID DrawAsciiGearDisplay(
         "[ 0 - 9  - Gear Control               ]\n"
         "[ INSERT - Toggle Gear/Main Window    ]\n"
         "[ DELETE - Rescan Gear Addresses      ]\n"
-        "[ HOME   - Switch Single/Multiplayer  ]\n"
         "[ END    - Exit H-Shifter             ]\n"
         "[*************************************]\n"
         "\n"

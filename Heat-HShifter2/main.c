@@ -25,7 +25,6 @@
 ///    *  - 0-9: Change gear (NOT NUMPAD!!)
 ///    *  - INSERT: Toggle between the gear display and the main console window
 ///    *  - DELETE: Re-scan for gear addresses (do this every time you enter and exit garage)
-///    *  - HOME:   Switch between singleplayer and multiplayer mode
 ///    *  - END: Exit the program
 ///  
 /// 
@@ -177,7 +176,7 @@ STATIC BOOLEAN ScanForGearAddresses(
 }
 
 STATIC BOOLEAN InitShifter(
-    TARGET_MODE eTargetMode
+    VOID
 ) {
     // Default gear state
     g_ShifterConfig.dwCurrentGear = GEAR_1;
@@ -287,24 +286,6 @@ STATIC BOOLEAN InitShifter(
 
     printf(
         "[+] Loaded keyboard map from config file.\n"
-    );
-
-    // Check if a mode argument was passed
-    if (TARGET_MODE_INVALID == eTargetMode) {
-        if (!ChangeModePrompt()) {
-            fprintf(
-                stderr,
-                "[-] Invalid target mode.\n"
-            );
-            return FALSE;
-        }
-    }
-
-    printf(
-        "[*] Target mode: %s\n",
-        (TARGET_MODE_SINGLEPLAYER == g_ShifterConfig.eTargetMode) 
-        ? "Singleplayer" 
-        : "Multiplayer"
     );
 
     printf(
@@ -467,37 +448,6 @@ INT64 CALLBACK KeyboardHookProc(
             break;
         }
 
-        case VK_HOME: {
-            // Switch between singleplayer and multiplayer mode
-            SetMainWindowVisible();
-
-            printf("[*] Switching target mode..\n");
-
-            if (!ChangeModePrompt()) {
-                fprintf(
-                    stderr,
-                    "[-] Invalid target mode.\n"
-                );
-
-                goto _NEXT_HOOK;
-            }
-
-            if (!ScanForGearAddresses()) {
-                fprintf(
-                    stderr,
-                    "[-] Unable to find gear addresses.\n"
-                );
-                PostQuitMessage(EXIT_FAILURE);
-            }
-
-            if (g_ShifterConfig.bGearWindowEnabled) {
-                SwitchWindows();
-            }
-
-            g_ShifterConfig.dwCurrentGear = ReadCurrentGear();
-            break;
-        }
-
         case VK_DELETE: {
             // Re-scan for gear addresses
             SetMainWindowVisible();
@@ -541,21 +491,6 @@ int main(int argc, const char *argv[]) {
     INT iMsgResult = 0;
     HHOOK hKeyboardHook = NULL;
 
-    TARGET_MODE eTargetMode = TARGET_MODE_INVALID;
-
-    if (argc >= 2) {
-        if (EXIT_SUCCESS == strcmp(argv[1], "--single")) {
-            eTargetMode = TARGET_MODE_SINGLEPLAYER;
-        } else if (EXIT_SUCCESS == strcmp(argv[1], "--multi")) {
-            eTargetMode = TARGET_MODE_MULTIPLAYER;
-        } else {
-            fprintf(
-                stderr,
-                "[-] Invalid target mode.\n"
-            );
-        }
-    }
-
     printf(
         "*****************************************************\n"
         "***** Need for Speed Heat : Heat-HShifter v2   ******\n"
@@ -571,7 +506,7 @@ int main(int argc, const char *argv[]) {
         "[*] Initializing Shifter...\n"
     );
 
-    if (!InitShifter(eTargetMode)) {
+    if (!InitShifter()) {
         fprintf(
             stderr,
             "[-] Unable to initialize shifter.\n"

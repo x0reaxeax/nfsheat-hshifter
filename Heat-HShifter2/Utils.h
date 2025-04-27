@@ -53,6 +53,8 @@
 #define AOBSCAN_LAST_GEAR_LIVE_MEMORY_OFFSET    0xC                 // To be subtracted
 #define AOBSCAN_LIVE_MEMORY_ITERATIONS          4                   // Number of different live memory values to check
 #define AOBSCAN_LIVE_MEMORY_DELAY_MS            450                 // Delay between each live memory check
+#define AOBSCAN_UPDATE_CHECKPOINT               0x6000000           // Visual updates are displayed per this threshold.
+                                                                    //  - Setting this too low will cause performance issues
 
 #define GET_NIBBLE(value) ((DWORD64)(value) & 0xF)
 
@@ -76,12 +78,6 @@ typedef enum _TARGET_GEAR {
     TARGET_GEAR_INVALID = 0xFFFFFFFF
 } TARGET_GEAR, *LPTARGET_GEAR;
 
-typedef enum _TARGET_MODE {
-    TARGET_MODE_SINGLEPLAYER = 0,
-    TARGET_MODE_MULTIPLAYER,
-    TARGET_MODE_INVALID = 0xFFFFFFFF
-} TARGET_MODE, *LPTARGET_MODE;
-
 typedef enum _FOREGROUND_WINDOW {
     FGWIN_GAME = 0,
     FGWIN_SHIFTER,
@@ -99,8 +95,6 @@ typedef struct _SHIFTER_CONFIG {
     DWORD dwShifterThreadId;
 
     DWORD dwCurrentGear;
-
-    TARGET_MODE eTargetMode;
     
     HWND hGameWindow;
     BOOL bGameWasMinimized;
@@ -162,16 +156,6 @@ SHIFT_GEAR ReadGear(
     ReadGear(TARGET_GEAR_CURRENT)
 #define ReadLastGear() \
     ReadGear(TARGET_GEAR_LAST)
-
-/// <summary>
-///  Prompts the user to select the target mode.
-/// </summary>
-/// /// <returns>
-///  TRUE if the target mode was successfully set, FALSE on failure.
-/// </returns>
-BOOLEAN ChangeModePrompt(
-    VOID
-);
 
 /// <summary>
 ///  Maximizes the target console window.
