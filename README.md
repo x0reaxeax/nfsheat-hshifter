@@ -1,52 +1,121 @@
-# H-Shifter support for Need for Speed Heat
+# Need for Speed Heat - H-Shifter v2
 
-Since NFS Heat for some reason doesn't support shifters at all, this program makes it possible!  
-You can use a shifter with up-to 8 gears.  
+### Full H-Shifter Support for NFS Heat
 
-Since I didn't have the patience to find static pointer (offset) to the one memory address that's required for this (either Frostbite engine or Denuvo or both being difficult.. that said, if a kind soul has the time to RE Heat and provide this address, please please please hit me up!), this program supports either manually supplying the memory address that you can easily find with Cheat Engine, or an automatic memory scanner that will do this for you easily.   
+[**👉 <span style="color:orangered;style:bold;">Download the Latest Release</span>**](https://github.com/x0reaxeax/nfsheat-hshifter/releases/latest)
 
-**[DOWNLOAD PROGRAM HERE](https://github.com/x0reaxeax/nfsheat-hshifter/releases/latest)**
+## 🚗 What's New in v2:
 
-**[VIDEO GUIDE](https://www.youtube.com/watch?v=t9aC8s_3zog)**
+All the annoying manual memory scans from v1 are gone. The new version automatically locates and updates gear addresses, supports custom gear mappings, and includes an ASCII gear display inside the console.
 
-## Getting started
+### ✨ Features:
 
-*This guide will cover the usage of built-in memory scanner for ease-of-use.*  
+- **Automatic memory scanning**: Launch the program, select single or multiplayer, and it does the rest.
+- **Supports up to 8 gears + Reverse (Neutral possible, but doesn't rev in the game)**.
+- **Customizable key mappings** (default keys: `0–9`).
+- **Built-in Gear Display Console**: See the current gear in a goofy ASCII "art".
+- **Easy re-scan**: Just press a key after switching cars or leaving the garage.
 
-Since I own Logitech Driving Force Shifter, I will demonstrate how to use this with Logitech G HUB software, however, this program will work with any shifter that supports custom keymappings.  
-What you'll want to do is map your shifter gears to keys 1 - 6 (not NUMPAD keys!) like this:  
-| Key   | GEAR             |
-|-------|------------------|
-| Key 0 | REVERSE          |
-| Key 1 | Neutral (UNUSED) |
-| Key 2 | GEAR 1           |
-| Key 3 | GEAR 2           |
-| Key 4 | GEAR 3           |
-| Key 5 | GEAR 4           |
-| Key 6 | Gear 5           |
-| Key 7 | Gear 6           |
+---
 
+## 🛠️ Getting Started
+
+### 📌 Setup:
+
+1. **Download and Extract** the latest release from the [releases page](https://github.com/x0reaxeax/nfsheat-hshifter/releases/latest).
+
+2. **Configure Your Shifter**:
+
+   - Map your shifter gears to keyboard keys using your shifter’s software (e.g., Logitech G HUB).
+   - For customizing key mappings, see [Customizing Keybindings](#customizing-keybindings) section below.
+   - Default key mapping (can be customized in the config):
+
+| Key | Gear        |
+| --- | ----------- |
+| `0` | Reverse (R) |
+| `1` | Neutral (N) |
+| `2` | Gear 1      |
+| `3` | Gear 2      |
+| `4` | Gear 3      |
+| `5` | Gear 4      |
+| `6` | Gear 5      |
+| `7` | Gear 6      |
+| `8` | Gear 7      |
+| `9` | Gear 8      |
+
+**Example mapping for Logitech Driving Force Shifter:**
 ![ghub](https://i.imgur.com/eTj3Fx6.png)
 
-Once you've done all that, launch the game, set your transmission to manual in settings and hop into a session (you cannot be inside the garage).  
+3. **Run NFS Heat**:
 
-After you load into the game, launch `heat-shifter.exe`, type `s` and press `ENTER`.  
+   - Launch the game, set transmission to manual (also disable auto-reverse), and load into a session **(must NOT be inside the garage)**.
 
-The program will ask you to shift into the 4th gear. Do as you're asked and `ALT-TAB` back into the program and press `ENTER`.  
+4. **Run the H-Shifter Program**:
 
-The program will search NFS' memory for a short while (depending on your computing power).  
+   - Launch `Heat-HShifter2.exe`.
+   - The program will automatically scan for gear addresses.
+   - If your game is minimized, the program will automatically maximize it for the duration of the scan.
+   - Once completed, you can immediately start using your shifter!
 
-After it's done searching, it will ask you to shift into 3rd gear, `ALT-TAB` back and press `ENTER`.  
+---
 
-This step will repeat a few more times, until the program finds 18 results and print out found memory addresses.  
+## ⚙️ Controls
 
-After that happens, you can go back to the game and try changing gears with your shifter.  
+- **Gear Keys** (`0–9` by default): Change gears.
+- **INSERT**: Toggle between the main and gear-display console windows.
+- **DELETE**: Rescan gear addresses (use this if you change cars or leave the garage).
+- **END**: Exit the program safely.
 
-If the gear doesn't change on the speedometer, press the `+` key (numpad) and change to two different gears. If the gear changes inside the speedometer, you have the right address. So repeat the process of pressing the `+` key and shifting into two different gears, until it basically works :)  
+---
 
-**That's it, enjoy!**
+## 🎨 Customizing Keybindings
 
-## Issues & Limitations
-The only issue is that you have to close and re-launch the program and repeat the scan everytime you go in and out of garage or change your car. There is no need to restart the program after hopping into a race if you don't change your car.  
+You can customize your keybindings easily by editing the `config.ini` file located at:
 
-The one limitation for now is that there is no support for neutral, i.e. the program won't put out the gear after doing so on your shifter. I'm already planning on fixing this in the near future.
+```
+%USERPROFILE%\Documents\Heat-HShifter2\config.ini
+```
+
+Example configuration:
+
+```ini
+[CONFIG]
+GEAR_REVERSE=0x30
+GEAR_NEUTRAL=0x31
+GEAR_1=0x32
+...
+GEAR_8=0x39
+```
+
+Key values can be found at [Virtual-Key Codes](https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes).
+**Note:** Make sure the keycodes are properly mapped in your shifter's software as well.
+
+---
+
+## 🐞 Known Issues & Solutions
+
+- **Console lag on Windows 11**: Set your system's Power Plan to "High Performance".
+- **Memory scan takes too long**: The scan speed may vary due to game protections like Denuvo. Just give it some time, usually takes between 10-40 seconds tops.
+- **Gear not responding**: Press `DELETE` to rescan gear addresses.
+- **Gear addresses not found**: Please see the [Troubleshooting & Support](#troubleshooting--support) section.
+
+---
+
+## 📣 Troubleshooting & Support
+
+If you encounter any issues, please open an issue on the [GitHub Issues page](https://github.com/x0reaxeax/nfsheat-hshifter/issues).
+If possible, it would be great if you could provide either a screenshot or a copy-paste of the console output (main window, not gear display window), and if extra possible, a memory dump of the game process. This will be incredibly helpful when I try to identify the issue.
+I have a limited number of machines to test on, so I cannot guarantee the program will work out of the box on all systems. However, opening a new issue and documenting the program/game behavior will help shaping the program for everyone 🧡
+
+---
+
+## 💖 Credits & License
+
+Created by [x0reaxeax](https://github.com/x0reaxeax). 
+ChatGPT for README.md generation 🧡
+Licensed under **GPLv3**.
+
+---
+
+**Enjoy your H-Shifter in Need for Speed Heat - Happy racing! 🚗💨🔥**
+
