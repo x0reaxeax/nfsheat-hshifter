@@ -43,7 +43,7 @@
 #define HEAT_LAST_GEAR_ADDRESS_NIBBLE           0x0
 #define HEAT_CURRENT_GEAR_ARTIFACT_NIBBLE       0x3
 #define HEAT_CURRENT_GEAR_ARTIFACT_OFFSET       0x15                // To be added to artifact
-#define HEAT_LAST_GEAR_ARTIFACT_OFFSET          0x48
+#define HEAT_LAST_GEAR_ARTIFACT_OFFSET          0x48                // To be added to artifact
 
 #define AOBSCAN_LOW_ADDRESS_LIMIT               0x10000ULL
 #define AOBSCAN_HIGH_ADDRESS_LIMIT              0x2FFFFFFFFULL
@@ -51,8 +51,8 @@
 
 #define AOBSCAN_CURRENT_GEAR_LIVE_MEMORY_OFFSET 0x31                // To be added
 #define AOBSCAN_LAST_GEAR_LIVE_MEMORY_OFFSET    0xC                 // To be subtracted
-#define AOBSCAN_LIVE_MEMORY_ITERATIONS          3                   // Number of different live memory values to check
-#define AOBSCAN_LIVE_MEMORY_DELAY_MS            350                 // Delay between each live memory check
+#define AOBSCAN_LIVE_MEMORY_ITERATIONS          4                   // Number of different live memory values to check
+#define AOBSCAN_LIVE_MEMORY_DELAY_MS            450                 // Delay between each live memory check
 
 #define GET_NIBBLE(value) ((DWORD64)(value) & 0xF)
 
@@ -166,6 +166,17 @@ SHIFT_GEAR ReadGear(
 /// </returns>
 BOOLEAN ChangeModePrompt(
     VOID
+);
+
+/// <summary>
+///  Maximizes the target console window.
+/// </summary>
+/// <param name="hTargetWindow"></param>
+/// <returns>
+///  TRUE if the target window was successfully maximized, FALSE on failure.
+/// </returns>
+BOOLEAN MaximizeWindow(
+    HWND hTargetWindow
 );
 
 /// <summary>

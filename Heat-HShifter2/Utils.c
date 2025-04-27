@@ -255,13 +255,33 @@ BOOL CALLBACK EnumWindowProc(
     DWORD dwPid = 0;
     GetWindowThreadProcessId(hwnd, &dwPid);
 
-    if (dwPid == g_ShifterConfig.dwGameProcessId) {
-        g_ShifterConfig.hGameWindow = hwnd;
-        *(PBOOLEAN) lParam = TRUE; // Set found flag
-        return FALSE; // Stop enumeration
+    if (dwPid != g_ShifterConfig.dwGameProcessId) {
+        return TRUE; // Continue enumeration
+    }
+    
+    CHAR szWindowsTitle[256] = { 0 };
+    LPCSTR szTargetTitle = "Need for Speed";
+    if (0 == GetWindowTextA(
+        hwnd,
+        szWindowsTitle,
+        sizeof(szWindowsTitle) - 1
+    )) {
+        return TRUE; // Continue enumeration
+    }
+    if (EXIT_SUCCESS != memcmp(
+        szWindowsTitle,
+        szTargetTitle,
+        strlen(szTargetTitle) - 1
+    )) {
+        return TRUE; // Continue enumeration
     }
 
-    return TRUE; // Continue enumeration
+    g_ShifterConfig.hGameWindow = hwnd;
+    
+    // Set found flag
+    *(PBOOLEAN) lParam = TRUE; 
+
+    return FALSE; // Stop enumeration
 }
 
 BOOLEAN FindGameWindow(
@@ -271,22 +291,14 @@ BOOLEAN FindGameWindow(
         // Already found
         return TRUE;
     }
-
+    
     BOOLEAN bFound = FALSE;
     EnumWindows(
         EnumWindowProc,
         (LPARAM) &bFound
     );
 
-    if (!bFound) {
-        fprintf(
-            stderr,
-            "[-] Game window not found.\n"
-        );
-        return FALSE;
-    }
-    
-    return TRUE;
+    return bFound;
 }
 
 BOOLEAN IsWindowForeground(
@@ -323,6 +335,36 @@ BOOLEAN IsWindowForeground(
     }
 
     return FALSE;
+}
+
+BOOLEAN MaximizeWindow(
+    HWND hTargetWindow
+) {
+    if (!ShowWindow(
+        hTargetWindow,
+        SW_RESTORE
+    )) {
+        fprintf(
+            stderr,
+            "[-] ShowWindow: E%lu\n", 
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    if (!ShowWindow(
+        hTargetWindow,
+        SW_SHOW
+    )) {
+        fprintf(
+            stderr,
+            "[-] ShowWindow: E%lu\n", 
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
 VOID ClearScreen(

@@ -197,25 +197,56 @@ STATIC BOOLEAN VerifyPlayerGear(
     LPCVOID lpcCurrentArtifactAddress,
     TARGET_GEAR eTargetGear
 ) {
-    DWORD dwScore = 0;
-    if (!IsIconic(
+    if (IsIconic(
         g_ShifterConfig.hGameWindow
     )) {
         // Live memory is only live if the game is not minimized
-        if (IsValueLiveMemory(
-            lpcCurrentArtifactAddress,
-            eTargetGear
+        if (!MaximizeWindow(
+            g_ShifterConfig.hGameWindow
         )) {
-            dwScore++;
+            fprintf(
+                stderr,
+                "[-] Failed to maximize game window.\n"
+            );
+            return FALSE;
         }
+
+        Sleep(500);
+    }
+
+    if (!IsValueLiveMemory(
+        lpcCurrentArtifactAddress,
+        eTargetGear
+    )) {
+        return FALSE;
     }
 
     DWORD dwReadValue = 0;
     SIZE_T cbBytesRead = 0;
 
-    LPCVOID lpcTargetAddressGear = (LPCVOID) (
-        (DWORD64) lpcCurrentArtifactAddress + HEAT_CURRENT_GEAR_ARTIFACT_OFFSET
-    );
+    LPCVOID lpcTargetAddressGear;
+
+    switch (eTargetGear) {
+        case TARGET_GEAR_CURRENT:
+            lpcTargetAddressGear = (LPCVOID) (
+                (DWORD64) (DWORD64) lpcCurrentArtifactAddress + HEAT_CURRENT_GEAR_ARTIFACT_OFFSET
+            );
+            break;
+
+        case TARGET_GEAR_LAST:
+            lpcTargetAddressGear = (LPCVOID) (
+                (DWORD64) lpcCurrentArtifactAddress + HEAT_LAST_GEAR_ARTIFACT_OFFSET
+            );
+            break;
+
+        default:
+            fprintf(
+                stderr,
+                "[-] Invalid target gear: %d\n",
+                eTargetGear
+            );
+            return FALSE;
+    }
 
     if (!ReadProcessMemory(
         g_ShifterConfig.hGameProcess,
@@ -232,7 +263,8 @@ STATIC BOOLEAN VerifyPlayerGear(
         return FALSE;
     }
 
-    if (dwReadValue < GEAR_REVERSE || dwReadValue > GEAR_8) {
+    // Omit GEAR_REVERSE from this check, so the car can't be in reverse gear!!
+    if (dwReadValue < GEAR_NEUTRAL || dwReadValue > GEAR_8) {
         return FALSE;
     }
 
@@ -267,10 +299,27 @@ LPCVOID AobScan(
     
     MEMORY_BASIC_INFORMATION memInfo = { 0 };
 
+    // Save cursor position, but don't check for errors
+    // to avoid sacrificing scan speed even more
+    BOOLEAN bCursorPositionSaved = TRUE;
+    CONSOLE_SCREEN_BUFFER_INFO csbi = { 0 };
+    if (!GetConsoleScreenBufferInfo(
+        g_ShifterConfig.hConsoleWindow,
+        &csbi
+    )) {
+        bCursorPositionSaved = FALSE;
+    }
+
     while ((DWORD64) lpCurrentAddress < AOBSCAN_HIGH_ADDRESS_LIMIT) {
-        if (0 == ((DWORD64) lpCurrentAddress & 0x4000000)) {
+        if (0 == ((DWORD64) lpCurrentAddress & 0x4000000) && bCursorPositionSaved) {
+            // Restore cursor position
+            SetConsoleCursorPosition(
+                g_ShifterConfig.hConsoleWindow,
+                csbi.dwCursorPosition
+            );
+
             printf(
-                "\r[*] Scanning memory: 0x%012llX",
+                "[*] Scanning memory: 0x%012llX\n",
                 (DWORD64) lpCurrentAddress
             );
         }
@@ -354,9 +403,6 @@ LPCVOID AobScan(
     }
 
 _FINAL:
-
-    putchar('\n');
-
     VirtualFree(
         lpReadBuffer,
         0,

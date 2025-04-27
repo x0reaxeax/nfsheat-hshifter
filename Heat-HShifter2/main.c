@@ -222,6 +222,11 @@ STATIC BOOLEAN InitShifter(
         return FALSE;
     }
 
+    printf(
+        "[+] Found game window - handle: 0x%llX\n",
+        (DWORD64) g_ShifterConfig.hGameWindow
+    );
+
     // Get handle of the main console window
     g_ShifterConfig.hConsoleWindow = GetStdHandle(STD_OUTPUT_HANDLE);
     if (INVALID_HANDLE_VALUE == g_ShifterConfig.hConsoleWindow) {
