@@ -211,6 +211,7 @@ STATIC BOOLEAN VerifyPlayerGear(
             return FALSE;
         }
 
+        g_ShifterConfig.bGameWasMinimized = TRUE;
         Sleep(500);
     }
 
@@ -304,7 +305,7 @@ LPCVOID AobScan(
     BOOLEAN bCursorPositionSaved = TRUE;
     CONSOLE_SCREEN_BUFFER_INFO csbi = { 0 };
     if (!GetConsoleScreenBufferInfo(
-        g_ShifterConfig.hConsoleWindow,
+        g_ShifterConfig.hShifterConsole,
         &csbi
     )) {
         bCursorPositionSaved = FALSE;
@@ -314,7 +315,7 @@ LPCVOID AobScan(
         if (0 == ((DWORD64) lpCurrentAddress & 0x4000000) && bCursorPositionSaved) {
             // Restore cursor position
             SetConsoleCursorPosition(
-                g_ShifterConfig.hConsoleWindow,
+                g_ShifterConfig.hShifterConsole,
                 csbi.dwCursorPosition
             );
 
@@ -384,13 +385,11 @@ LPCVOID AobScan(
                         }
                     }
 
-                    if (TARGET_MODE_MULTIPLAYER == g_ShifterConfig.eTargetMode) {
-                        if (!VerifyPlayerGear(
-                            lpTempMatch,
-                            eTargetGear
-                        )) {
-                            continue;
-                        }
+                    if (!VerifyPlayerGear(
+                        lpTempMatch,
+                        eTargetGear
+                    )) {
+                        continue;
                     }
 
                     lpAobMatch = lpTempMatch;

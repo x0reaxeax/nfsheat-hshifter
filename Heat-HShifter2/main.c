@@ -92,6 +92,8 @@ STATIC BOOLEAN ScanForGearAddresses(
         return FALSE;
     }
 
+    g_ShifterConfig.bGameWasMinimized = FALSE;
+
     LPCVOID lpCurrentGearArtifact = AobScan(
         abCurrentGearPattern,
         sizeof(abCurrentGearPattern),
@@ -131,6 +133,19 @@ STATIC BOOLEAN ScanForGearAddresses(
         "[+] Memory artifact address (previous gear): 0x%llX\n",
         (DWORD64) lpLastGearArtifact
     );
+
+    if (g_ShifterConfig.bGameWasMinimized) {
+        if (!ShowWindow(
+            g_ShifterConfig.hGameWindow,
+            SW_MINIMIZE
+        )) {
+            fprintf(
+                stderr,
+                "[-] ShowWindow(): E%lu\n",
+            GetLastError()
+            );
+        }
+    }
 
     // Revert prority priority class
     printf(
@@ -183,8 +198,10 @@ STATIC BOOLEAN InitShifter(
         &g_ShifterConfig.wszConfigFilePath,
         sizeof(g_ShifterConfig.wszConfigFilePath)
     );
-
+    
+    g_ShifterConfig.hShifterWindow = GetForegroundWindow();
     g_ShifterConfig.dwShifterProcessId = GetCurrentProcessId();
+    g_ShifterConfig.dwShifterThreadId = GetCurrentThreadId();
 
     if (0 == g_ShifterConfig.dwGameProcessId) {
         fprintf(
@@ -228,8 +245,8 @@ STATIC BOOLEAN InitShifter(
     );
 
     // Get handle of the main console window
-    g_ShifterConfig.hConsoleWindow = GetStdHandle(STD_OUTPUT_HANDLE);
-    if (INVALID_HANDLE_VALUE == g_ShifterConfig.hConsoleWindow) {
+    g_ShifterConfig.hShifterConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (INVALID_HANDLE_VALUE == g_ShifterConfig.hShifterConsole) {
         fprintf(
             stderr,
             "[-] GetStdHandle(): E%lu\n",
@@ -240,7 +257,7 @@ STATIC BOOLEAN InitShifter(
 
     // Create a new console screen buffer for the gear display,
     // even if it's not going to be used (for future purposes)
-    g_ShifterConfig.hGearConsoleWindow = CreateConsoleScreenBuffer(
+    g_ShifterConfig.hGearDisplayConsole = CreateConsoleScreenBuffer(
         GENERIC_READ | GENERIC_WRITE,
         0,
         NULL,
@@ -248,7 +265,7 @@ STATIC BOOLEAN InitShifter(
         NULL
     );
 
-    if (INVALID_HANDLE_VALUE == g_ShifterConfig.hGearConsoleWindow) {
+    if (INVALID_HANDLE_VALUE == g_ShifterConfig.hGearDisplayConsole) {
         fprintf(
             stderr,
             "[-] CreateConsoleScreenBuffer(): E%lu\n",
@@ -366,8 +383,28 @@ STATIC BOOL ShiftGear(
     // Give the game some time to (in/)validate gear change
     Sleep(75);
 
+
     // Read gear value from game memory
     g_ShifterConfig.dwCurrentGear = ReadCurrentGear();
+
+    // Sanitize last gear value
+    DWORD dwLastGear = ReadLastGear();
+    if (dwLastGear != g_ShifterConfig.dwCurrentGear) {
+        if (!WriteProcessMemory(
+            g_ShifterConfig.hGameProcess,
+            g_ShifterConfig.lpLastGearAddress,
+            &g_ShifterConfig.dwCurrentGear,
+            sizeof(DWORD),
+            &cbBytesWritten
+        )) {
+            fprintf(
+                stderr,
+                "[-] WriteProcessMemory(): E%lu\n",
+                GetLastError()
+            );
+            return FALSE;
+        }
+    }
 #else
     g_ShifterConfig.dwCurrentGear = eTargetGear;
 #endif
@@ -570,7 +607,7 @@ int main(int argc, const char *argv[]) {
         printf("[*] Switching to gear display console window..\n");
         
         if (!SetConsoleActiveScreenBuffer(
-            g_ShifterConfig.hGearConsoleWindow
+            g_ShifterConfig.hGearDisplayConsole
         )) {
             fprintf(
                 stderr,
@@ -600,7 +637,7 @@ int main(int argc, const char *argv[]) {
     }
 
     if (!SetConsoleActiveScreenBuffer(
-        g_ShifterConfig.hConsoleWindow
+        g_ShifterConfig.hShifterConsole
     )) {
         fprintf(
             stderr,
@@ -610,7 +647,7 @@ int main(int argc, const char *argv[]) {
     }
 
     ClearScreen(
-        g_ShifterConfig.hGearConsoleWindow
+        g_ShifterConfig.hGearDisplayConsole
     );
 
     printf(
@@ -628,7 +665,7 @@ int main(int argc, const char *argv[]) {
     }
 
     CloseHandle(
-        g_ShifterConfig.hGearConsoleWindow
+        g_ShifterConfig.hGearDisplayConsole
     );
 
     CloseHandle(

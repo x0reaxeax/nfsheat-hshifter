@@ -96,14 +96,19 @@ typedef struct _SHIFTER_CONFIG {
     HANDLE hGameProcess;
     DWORD dwGameProcessId;
     DWORD dwShifterProcessId;
+    DWORD dwShifterThreadId;
 
     DWORD dwCurrentGear;
 
     TARGET_MODE eTargetMode;
     
     HWND hGameWindow;
-    HANDLE hConsoleWindow;
-    HANDLE hGearConsoleWindow;
+    BOOL bGameWasMinimized;
+    
+    HWND hShifterWindow;
+
+    HANDLE hShifterConsole;
+    HANDLE hGearDisplayConsole;
     BOOLEAN bGearWindowEnabled;
     BOOLEAN bIsMainWindowVisible;
     BOOLEAN bIsGearWindowVisible;
@@ -176,6 +181,17 @@ BOOLEAN ChangeModePrompt(
 ///  TRUE if the target window was successfully maximized, FALSE on failure.
 /// </returns>
 BOOLEAN MaximizeWindow(
+    HWND hTargetWindow
+);
+
+/// <summary>
+///  Forces the target window to the foreground.
+/// </summary>
+/// /// <param name="hTargetWindow"></param>
+/// <returns>
+///  TRUE if the target window was successfully forced to the foreground, FALSE on failure.
+/// </returns>
+BOOL ForceForegroundWindow(
     HWND hTargetWindow
 );
 

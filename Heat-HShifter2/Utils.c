@@ -482,6 +482,83 @@ BOOLEAN ChangeModePrompt(
     return TRUE;
 }
 
+BOOL ForceForegroundWindow(
+    HWND hTargetWindow
+) {
+    DWORD dwForegroundThreadId = GetWindowThreadProcessId(
+        GetForegroundWindow(),
+        NULL
+    );
+
+    if (0 == dwForegroundThreadId) {
+        fprintf(
+            stderr,
+            "[-] GetWindowThreadProcessId(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    if (!AttachThreadInput(
+        dwForegroundThreadId,
+        g_ShifterConfig.dwShifterThreadId,
+        TRUE
+    )) {
+        fprintf(
+            stderr,
+            "[-] AttachThreadInput(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    if (!SetForegroundWindow(
+        hTargetWindow
+    )) {
+        fprintf(
+            stderr,
+            "[-] SetForegroundWindow(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    if (!BringWindowToTop(
+        hTargetWindow
+    )) {
+        fprintf(
+            stderr,
+            "[-] BringWindowToTop(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    if (NULL == SetFocus(
+        hTargetWindow
+    )) {
+        fprintf(
+            stderr,
+            "[-] SetFocus(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    if (!AttachThreadInput(
+        dwForegroundThreadId,
+        g_ShifterConfig.dwShifterThreadId,
+        FALSE
+    )) {
+        fprintf(
+            stderr,
+            "[-] AttachThreadInput(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+}
+
 VOID SwitchWindows(
     VOID
 ) {
@@ -491,11 +568,11 @@ VOID SwitchWindows(
     HANDLE hTargetConsole = NULL;
 
     if (g_ShifterConfig.bGearWindowEnabled && g_ShifterConfig.bIsGearWindowVisible) {
-        hTargetConsole = g_ShifterConfig.hConsoleWindow;
+        hTargetConsole = g_ShifterConfig.hShifterConsole;
     } else if (g_ShifterConfig.bIsMainWindowVisible) {
-        hTargetConsole = g_ShifterConfig.hGearConsoleWindow;
+        hTargetConsole = g_ShifterConfig.hGearDisplayConsole;
     } else {
-        hTargetConsole = g_ShifterConfig.hConsoleWindow;
+        hTargetConsole = g_ShifterConfig.hShifterConsole;
     }
 
     if (!SetConsoleActiveScreenBuffer(
@@ -509,7 +586,7 @@ VOID SwitchWindows(
         return;
     }
 
-    if (hTargetConsole == g_ShifterConfig.hConsoleWindow) {
+    if (hTargetConsole == g_ShifterConfig.hShifterConsole) {
         g_ShifterConfig.bIsMainWindowVisible = TRUE;
         g_ShifterConfig.bIsGearWindowVisible = FALSE;
     } else {
@@ -524,7 +601,7 @@ BOOLEAN SetMainWindowVisible(
     VOID
 ) {
     if (!SetConsoleActiveScreenBuffer(
-        g_ShifterConfig.hConsoleWindow
+        g_ShifterConfig.hShifterConsole
     )) {
         fprintf(
             stderr,
@@ -543,7 +620,7 @@ VOID DrawAsciiGearDisplay(
     VOID
 ) {
     ClearScreen(
-        g_ShifterConfig.hGearConsoleWindow
+        g_ShifterConfig.hGearDisplayConsole
     );
 
     DWORD dwCharsToWrite;
@@ -596,7 +673,7 @@ VOID DrawAsciiGearDisplay(
     dwCharsToWrite = (DWORD) strlen(szOutputBuffer);
 
     if (!WriteConsoleA(
-        g_ShifterConfig.hGearConsoleWindow,
+        g_ShifterConfig.hGearDisplayConsole,
         szOutputBuffer,
         dwCharsToWrite,
         &dwCharsWritten,
