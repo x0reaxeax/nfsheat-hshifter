@@ -2,7 +2,7 @@
 
 ### Full H-Shifter Support for NFS Heat
 
-[**👉 <span style="color:orangered;style:bold;">Download the Latest Release</span>**](https://github.com/x0reaxeax/nfsheat-hshifter/releases/latest)
+[**👉Download the Latest Release**](https://github.com/x0reaxeax/nfsheat-hshifter/releases/latest)
 
 ## 🚗 What's New in v2:
 
@@ -87,7 +87,7 @@ GEAR_1=0x32
 GEAR_8=0x39
 ```
 
-Key values can be found at [Virtual-Key Codes](https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes).
+Key values can be found at [Virtual-Key Codes](https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes).  
 **Note:** Make sure the keycodes are properly mapped in your shifter's software as well.
 
 ---
@@ -103,17 +103,17 @@ Key values can be found at [Virtual-Key Codes](https://learn.microsoft.com/en-us
 
 ## 📣 Troubleshooting & Support
 
-If you encounter any issues, please open an issue on the [GitHub Issues page](https://github.com/x0reaxeax/nfsheat-hshifter/issues).
-If possible, it would be great if you could provide either a screenshot or a copy-paste of the console output (main window, not gear display window), and if extra possible, a memory dump of the game process. This will be incredibly helpful when I try to identify the issue.
+If you encounter any issues, please open an issue on the [GitHub Issues page](https://github.com/x0reaxeax/nfsheat-hshifter/issues).  
+If possible, it would be great if you could provide either a screenshot or a copy-paste of the console output (main window, not gear display window), and if extra possible, a memory dump of the game process. This will be incredibly helpful when I try to identify the issue.  
 I have a limited number of machines to test on, so I cannot guarantee the program will work out of the box on all systems. However, opening a new issue and documenting the program/game behavior will help shaping the program for everyone 🧡
 
 ---
 
 ## 💖 Credits & License
 
-Created by [x0reaxeax](https://github.com/x0reaxeax). 
-ChatGPT for README.md generation 🧡
-Licensed under **GPLv3**.
+Created by [x0reaxeax](https://github.com/x0reaxeax).  
+ChatGPT for README.md generation 🧡  
+Licensed under **GPLv3**.  
 
 ---
 
