@@ -41,14 +41,14 @@
 
 #define HEAT_GEAR_ADDRESS_NIBBLE                0x8
 #define HEAT_LAST_GEAR_ADDRESS_NIBBLE           0x0
-#define HEAT_CURRENT_GEAR_ARTIFACT_OFFSET       0x98                // To be added to artifact
+#define HEAT_CURRENT_GEAR_ARTIFACT_OFFSET       0x15                // To be added to artifact
 #define HEAT_LAST_GEAR_ARTIFACT_OFFSET          0x48
 
 #define AOBSCAN_LOW_ADDRESS_LIMIT               0x10000ULL
 #define AOBSCAN_HIGH_ADDRESS_LIMIT              0x2FFFFFFFFULL
 #define AOBSCAN_SCAN_CHUNK_SIZE                 0x40000U            // 256KB
 
-#define AOBSCAN_CURRENT_GEAR_LIVE_MEMORY_OFFSET 0xB4                // To be added
+#define AOBSCAN_CURRENT_GEAR_LIVE_MEMORY_OFFSET 0x31                // To be added
 #define AOBSCAN_LAST_GEAR_LIVE_MEMORY_OFFSET    0xC                 // To be subtracted
 #define AOBSCAN_LIVE_MEMORY_ITERATIONS          3                   // Number of different live memory values to check
 #define AOBSCAN_LIVE_MEMORY_DELAY_MS            350                 // Delay between each live memory check
@@ -82,6 +82,12 @@ typedef enum _TARGET_MODE {
     TARGET_MODE_MULTIPLAYER,
     TARGET_MODE_INVALID = 0xFFFFFFFF
 } TARGET_MODE, *LPTARGET_MODE;
+
+typedef enum _FOREGROUND_WINDOW {
+    FGWIN_GAME = 0,
+    FGWIN_SHIFTER,
+    FGWIN_INVALID = 0xFFFFFFFF
+} FOREGROUND_WINDOW, *LPFOREGROUND_WINDOW;
 
 typedef struct _KEYBOARD_MAP {
     DWORD adwKeyCode[GEAR_8 + 1];
@@ -195,13 +201,13 @@ VOID DrawAsciiGearDisplay(
 );
 
 /// <summary>
-///  Checks if the target game window is in the foreground.
+///  Checks if the target window is in the foreground.
 /// </summary>
 /// /// <returns>
-///  TRUE if the target game window is in the foreground, FALSE otherwise.
+///  TRUE if the target window is in the foreground, FALSE otherwise.
 /// </returns>
-BOOLEAN IsGameWindowForeground(
-    VOID
+BOOLEAN IsWindowForeground(
+    FOREGROUND_WINDOW eTargetWindow
 );
 
 /// <summary>

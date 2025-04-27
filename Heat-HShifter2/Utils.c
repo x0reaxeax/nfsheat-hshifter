@@ -248,8 +248,8 @@ VOID LoadConfig(
     );
 }
 
-BOOLEAN IsGameWindowForeground(
-    VOID
+BOOLEAN IsWindowForeground(
+    FOREGROUND_WINDOW eTargetWindow
 ) {
     HWND hWnd = GetForegroundWindow();
     if (NULL == hWnd) {
@@ -269,10 +269,19 @@ BOOLEAN IsGameWindowForeground(
         return FALSE;
     }
 
-    return (
-        dwWindowPid == g_ShifterConfig.dwGameProcessId
-        || dwWindowPid == g_ShifterConfig.dwShifterProcessId
-    );
+    if (FGWIN_GAME == eTargetWindow) {
+        return (dwWindowPid == g_ShifterConfig.dwGameProcessId);
+    } else if (FGWIN_SHIFTER == eTargetWindow) {
+        return (dwWindowPid == g_ShifterConfig.dwShifterProcessId);
+    } else {
+        fprintf(
+            stderr,
+            "[-] Invalid target window: %d\n",
+            eTargetWindow
+        );
+    }
+
+    return FALSE;
 }
 
 VOID ClearScreen(

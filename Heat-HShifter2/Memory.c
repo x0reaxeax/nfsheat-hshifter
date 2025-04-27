@@ -133,12 +133,12 @@ STATIC BOOLEAN AreDwordsUnique(
     return TRUE;
 }
 
-STATIC BOOLEAN VerifyPlayerGear(
+STATIC BOOLEAN IsValueLiveMemory(
     LPCVOID lpcCurrentArtifactAddress,
     TARGET_GEAR eTargetGear
 ) {
     LPCVOID lpcTargetAddress = NULL;
-    
+
     switch (eTargetGear) {
         case TARGET_GEAR_CURRENT:
             lpcTargetAddress = (LPCVOID) (
@@ -182,11 +182,56 @@ STATIC BOOLEAN VerifyPlayerGear(
 
         Sleep(AOBSCAN_LIVE_MEMORY_DELAY_MS);
     }
-    
+
     if (!AreDwordsUnique(
         adwReads,
         AOBSCAN_LIVE_MEMORY_ITERATIONS
     )) {
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+STATIC BOOLEAN VerifyPlayerGear(
+    LPCVOID lpcCurrentArtifactAddress,
+    TARGET_GEAR eTargetGear
+) {
+    DWORD dwScore = 0;
+    if (IsWindowForeground(
+        FGWIN_GAME
+    )) {
+        if (IsValueLiveMemory(
+            lpcCurrentArtifactAddress,
+            eTargetGear
+        )) {
+            dwScore++;
+        }
+    }
+
+    DWORD dwReadValue = 0;
+    SIZE_T cbBytesRead = 0;
+
+    LPCVOID lpcTargetAddressGear = (LPCVOID) (
+        (DWORD64) lpcCurrentArtifactAddress + HEAT_CURRENT_GEAR_ARTIFACT_OFFSET
+    );
+
+    if (!ReadProcessMemory(
+        g_ShifterConfig.hGameProcess,
+        lpcTargetAddressGear,
+        &dwReadValue,
+        sizeof(DWORD),
+        &cbBytesRead
+    )) {
+        fprintf(
+            stderr,
+            "[-] ReadProcessMemory(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    if (dwReadValue < GEAR_REVERSE || dwReadValue > GEAR_8) {
         return FALSE;
     }
 
