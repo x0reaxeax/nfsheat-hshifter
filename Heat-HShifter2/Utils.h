@@ -29,13 +29,13 @@
 #define STATIC      static
 #define INLINE      inline
 
-#define HSHIFTER_VERSION_MAJOR           2
-#define HSHIFTER_VERSION_MINOR           0
-#define HSHIFTER_VERSION_PATCH           0
+#define HSHIFTER_VERSION_MAJOR                  2
+#define HSHIFTER_VERSION_MINOR                  0
+#define HSHIFTER_VERSION_PATCH                  1
 
-#define PAGE_SIZE   0x1000
+#define PAGE_SIZE                               0x1000
 
-#define CONFIG_KNOWNFOLDERID_GUID               FOLDERID_Documents   // AppDataDocuments
+#define CONFIG_KNOWNFOLDERID_GUID               FOLDERID_Documents  // AppDataDocuments
 #define CONFIG_DIRECTORY_NAME                   L"Heat-HShifter2"
 #define CONFIG_FILE_NAME                        L"config.ini"
 #define LOG_FILE_NAME                           L"Shifter.log"
@@ -51,7 +51,6 @@
 
 #define AOBSCAN_LOW_ADDRESS_LIMIT               0x10000ULL
 #define AOBSCAN_HIGH_ADDRESS_LIMIT              0x2FFFFFFFFULL
-#define AOBSCAN_SCAN_CHUNK_SIZE                 0x40000U            // 256KB
 
 #define AOBSCAN_CURRENT_GEAR_LIVE_MEMORY_OFFSET 0x30                // To be added
 #define AOBSCAN_LAST_GEAR_LIVE_MEMORY_OFFSET    0xC                 // To be subtracted
