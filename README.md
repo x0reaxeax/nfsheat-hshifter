@@ -103,9 +103,17 @@ Key values can be found at [Virtual-Key Codes](https://learn.microsoft.com/en-us
 
 ## 📣 Troubleshooting & Support
 
-If you encounter any issues, please open an issue on the [GitHub Issues page](https://github.com/x0reaxeax/nfsheat-hshifter/issues).
-If possible, it would be great if you could provide either a screenshot or a copy-paste of the console output (main window, not gear display window), and if extra possible, a memory dump of the game process. This will be incredibly helpful when I try to identify the issue.
-I have a limited number of machines to test on, so I cannot guarantee the program will work out of the box on all systems. However, opening a new issue and documenting the program/game behavior will help shaping the program for everyone 🧡
+If you encounter any issues, please open an issue on the [GitHub Issues page](https://github.com/x0reaxeax/nfsheat-hshifter/issues).  
+  
+If possible, it would be great if you could run the shifter program with "--debug" argument and upload the log file.  
+You can do this via command line, by running the program like `Heat-HShifter2.exe --debug`.  
+The log file will be generated in `%USERPROFILE%\Documents\Heat-HShifter2\` and named `Shifter.log`.  
+  
+Additionally, if you want to go next-level, a memory dump of the game process would be super ultra 1337 amazing.  
+This will be incredibly helpful when I try to identify the issue.  
+  
+I have a limited number of machines to test on, so I cannot guarantee the program will work out of the box on all systems, especially because of stupid Denuvo, and the program's limited and hackish nature.  
+However, opening a new issue and documenting the program/game behavior will help shaping the program for everyone 🧡
 
 ---
 
