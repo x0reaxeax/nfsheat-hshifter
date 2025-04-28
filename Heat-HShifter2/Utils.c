@@ -26,6 +26,7 @@
 #include <Shlwapi.h>
 
 #include <stdio.h>
+#include <stdarg.h>
 
 #include "Utils.h"
 
@@ -68,6 +69,140 @@ DWORD GetGameProcessId(
 
     CloseHandle(hSnapshot);
     return dwPid;
+}
+
+HANDLE OpenLogFile(
+    VOID
+) {
+    WCHAR wszLogFilePath[MAX_PATH] = { 0 };
+    WCHAR wszLogFileName[MAX_PATH] = { 0 };
+
+    g_ShifterConfig.szLogBuffer = VirtualAlloc(
+        NULL,
+        LOG_BUFFER_SIZE,
+        MEM_COMMIT | MEM_RESERVE,
+        PAGE_READWRITE
+    );
+
+    if (NULL == g_ShifterConfig.szLogBuffer) {
+        fprintf(
+            stderr,
+            "[-] VirtualAlloc(): E%lu\n",
+            GetLastError()
+        );
+        return NULL;
+    }
+
+    // Remove config file name from the path
+    WCHAR *wszLastSlash = wcsrchr(
+        g_ShifterConfig.wszConfigFilePath,
+        L'\\'
+    );
+
+    if (NULL == wszLastSlash) {
+        fprintf(
+            stderr,
+            "[-] wcsrchr(): E%lu\n",
+            GetLastError()
+        );
+        return NULL;
+    }
+
+    *wszLastSlash = L'\0';
+
+    if (!PathCombineW(
+        wszLogFilePath,
+        g_ShifterConfig.wszConfigFilePath,
+        LOG_FILE_NAME
+    )) {
+        fprintf(
+            stderr,
+            "[-] PathCombineW(): E%lu\n",
+            GetLastError()
+        );
+        return NULL;
+    }
+
+    wprintf(
+        L"[*] Log file path: '%s'\n",
+        wszLogFilePath
+    );
+
+    HANDLE hLogFile = CreateFileW(
+        wszLogFilePath,
+        GENERIC_WRITE,
+        FILE_SHARE_READ | FILE_SHARE_WRITE,
+        NULL,
+        CREATE_ALWAYS,
+        FILE_ATTRIBUTE_NORMAL,
+        NULL
+    );
+
+    if (INVALID_HANDLE_VALUE == hLogFile) {
+        fprintf(
+            stderr,
+            "[-] CreateFileW(): E%lu\n",
+            GetLastError()
+        );
+        return NULL;
+    }
+
+    return hLogFile;
+}
+
+VOID CloseLogFile(
+    VOID
+) {
+    if (NULL != g_ShifterConfig.hLogFile) {
+        CloseHandle(g_ShifterConfig.hLogFile);
+        g_ShifterConfig.hLogFile = NULL;
+    }
+
+    if (NULL != g_ShifterConfig.szLogBuffer) {
+        VirtualFree(
+            g_ShifterConfig.szLogBuffer,
+            0,
+            MEM_RELEASE
+        );
+        g_ShifterConfig.szLogBuffer = NULL;
+    }
+}
+
+BOOLEAN WriteLog(
+    LPCSTR szFormat,
+    ...
+) {
+    if (NULL == g_ShifterConfig.hLogFile) {
+        return FALSE;
+    }
+
+    va_list args;
+    va_start(args, szFormat);
+    vsnprintf(
+        g_ShifterConfig.szLogBuffer, 
+        LOG_BUFFER_SIZE - 1,
+        szFormat, 
+        args
+    );
+    va_end(args);
+
+    DWORD dwBytesWritten = 0;
+    if (!WriteFile(
+        g_ShifterConfig.hLogFile,
+        g_ShifterConfig.szLogBuffer,
+        (DWORD) strlen(g_ShifterConfig.szLogBuffer),
+        &dwBytesWritten,
+        NULL
+    )) {
+        fprintf(
+            stderr,
+            "[-] WriteFile(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    return TRUE;
 }
 
 BOOLEAN CreateConfig(

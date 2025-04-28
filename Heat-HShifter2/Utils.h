@@ -38,18 +38,22 @@
 #define CONFIG_KNOWNFOLDERID_GUID               FOLDERID_Documents   // AppDataDocuments
 #define CONFIG_DIRECTORY_NAME                   L"Heat-HShifter2"
 #define CONFIG_FILE_NAME                        L"config.ini"
+#define LOG_FILE_NAME                           L"Shifter.log"
+#define LOG_BUFFER_SIZE                         0x1000
 
 #define HEAT_GEAR_ADDRESS_NIBBLE                0x8
 #define HEAT_LAST_GEAR_ADDRESS_NIBBLE           0x0
-#define HEAT_CURRENT_GEAR_ARTIFACT_NIBBLE       0x3
-#define HEAT_CURRENT_GEAR_ARTIFACT_OFFSET       0x15                // To be added to artifact
+#define HEAT_CURRENT_GEAR_ARTIFACT_NIBBLE       0x4
+#define HEAT_CURRENT_GEAR_ARTIFACT_OFFSET       0x14                // To be added to artifact
 #define HEAT_LAST_GEAR_ARTIFACT_OFFSET          0x48                // To be added to artifact
+#define HEAT_CURRENT_GEAR_ARTIFACT_SIZE         0x14
+#define HEAT_LAST_GEAR_ARTIFACT_SIZE            0x28
 
 #define AOBSCAN_LOW_ADDRESS_LIMIT               0x10000ULL
 #define AOBSCAN_HIGH_ADDRESS_LIMIT              0x2FFFFFFFFULL
 #define AOBSCAN_SCAN_CHUNK_SIZE                 0x40000U            // 256KB
 
-#define AOBSCAN_CURRENT_GEAR_LIVE_MEMORY_OFFSET 0x31                // To be added
+#define AOBSCAN_CURRENT_GEAR_LIVE_MEMORY_OFFSET 0x30                // To be added
 #define AOBSCAN_LAST_GEAR_LIVE_MEMORY_OFFSET    0xC                 // To be subtracted
 #define AOBSCAN_LIVE_MEMORY_ITERATIONS          4                   // Number of different live memory values to check
 #define AOBSCAN_LIVE_MEMORY_DELAY_MS            450                 // Delay between each live memory check
@@ -107,7 +111,11 @@ typedef struct _SHIFTER_CONFIG {
     BOOLEAN bIsMainWindowVisible;
     BOOLEAN bIsGearWindowVisible;
 
-    KEYBOARD_MAP KeyboardMap;   // WIP config remapping
+    HANDLE hLogFile;
+    LPBYTE szLogBuffer;
+    BOOLEAN bEnableDebugLogging;
+
+    KEYBOARD_MAP KeyboardMap;
     WCHAR wszConfigFilePath[MAX_PATH];
 
     LPVOID lpCurrentGearAddress;
@@ -230,6 +238,36 @@ BOOLEAN FindGameWindow(
 /// </returns>
 BOOLEAN IsWindowForeground(
     FOREGROUND_WINDOW eTargetWindow
+);
+
+/// <summary>
+///  Opens the log file for writing.
+/// </summary>
+/// /// <returns>
+///  Handle to the log file if opened successfully, NULL on failure.
+/// </returns>
+HANDLE OpenLogFile(
+    VOID
+);
+
+/// <summary>
+///  Closes the log file.
+/// </summary>
+VOID CloseLogFile(
+    VOID
+);
+
+/// <summary>
+///  Writes a formatted message to the log file.
+/// </summary>
+/// /// <param name="szFormat"></param>
+/// /// <param name="..."></param>
+/// /// <returns>
+///  TRUE if the message was successfully written, FALSE on failure.
+/// </returns>
+BOOLEAN WriteLog(
+    LPCSTR szFormat,
+    ...
 );
 
 /// <summary>

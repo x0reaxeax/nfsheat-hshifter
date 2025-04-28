@@ -49,9 +49,9 @@ STATIC BOOLEAN ScanForGearAddresses(
     VOID
 ) {
     CONST BYTE abCurrentGearPattern[] = {
-        0x41, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-        0x00, 0x00, 0x00, 0x00, 0x00, 0xAA, 0x61, 0x1C, 
-        0x3F, 0xAA, 0x61, 0x1C, 0x3F
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0xAA, 0x61, 0x1C, 0x3F,
+        0xAA, 0x61, 0x1C, 0x3F
     };
 
     CONST BYTE abLastGearPattern[] = {
@@ -61,6 +61,16 @@ STATIC BOOLEAN ScanForGearAddresses(
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
     };
+
+    static_assert(
+        sizeof(abCurrentGearPattern) == HEAT_CURRENT_GEAR_ARTIFACT_SIZE,
+        "Current gear artifact size mismatch."
+    );
+
+    static_assert(
+        sizeof(abLastGearPattern) == HEAT_LAST_GEAR_ARTIFACT_SIZE,
+        "Last gear artifact size mismatch."
+    );
 
     // Set higher priority class, since Win11 seems to bully the program
 
@@ -198,6 +208,10 @@ STATIC BOOLEAN InitShifter(
         sizeof(g_ShifterConfig.wszConfigFilePath)
     );
     
+    if (g_ShifterConfig.bEnableDebugLogging) {
+        printf("[*] Debug logging enabled.\n");
+    }
+
     g_ShifterConfig.hShifterWindow = GetForegroundWindow();
     g_ShifterConfig.dwShifterProcessId = GetCurrentProcessId();
     g_ShifterConfig.dwShifterThreadId = GetCurrentThreadId();
@@ -283,6 +297,22 @@ STATIC BOOLEAN InitShifter(
     }
 
     LoadConfig();
+
+    g_ShifterConfig.hLogFile = OpenLogFile();
+    if (NULL == g_ShifterConfig.hLogFile) {
+        fprintf(
+            stderr,
+            "[-] Unable to open log file.\n"
+        );
+        return FALSE;
+    }
+    
+    WriteLog(
+        "[*] Initializing HShifter v%u.%u.%u\n",
+        HSHIFTER_VERSION_MAJOR,
+        HSHIFTER_VERSION_MINOR,
+        HSHIFTER_VERSION_PATCH
+    );
 
     printf(
         "[+] Loaded keyboard map from config file.\n"
@@ -487,8 +517,19 @@ _NEXT_HOOK:
 }
 
 int main(int argc, const char *argv[]) {
+    if (argc >= 2) {
+        if (EXIT_SUCCESS == strncmp(
+            argv[1],
+            "--debug",
+            strlen("--debug")
+        )) {
+            g_ShifterConfig.bEnableDebugLogging = TRUE;
+        }
+    }
+    
     MSG msg = { 0 };
     INT iMsgResult = 0;
+    INT iRet = EXIT_FAILURE;
     HHOOK hKeyboardHook = NULL;
 
     printf(
@@ -531,7 +572,7 @@ int main(int argc, const char *argv[]) {
             GetLastError()
         );
         system("pause");
-        return EXIT_FAILURE;
+        goto _FINAL;
     }
 
     printf(
@@ -550,7 +591,7 @@ int main(int argc, const char *argv[]) {
                 GetLastError()
             );
             system("pause");
-            return EXIT_FAILURE;
+            goto _FINAL;
         }
     }
 
@@ -598,7 +639,12 @@ int main(int argc, const char *argv[]) {
             GetLastError()
         );
     }
+    
+    printf("[+] Exiting..\n");
 
+    iRet = EXIT_SUCCESS;
+
+_FINAL:
     CloseHandle(
         g_ShifterConfig.hGearDisplayConsole
     );
@@ -607,7 +653,9 @@ int main(int argc, const char *argv[]) {
         g_ShifterConfig.hGameProcess
     );
 
-    printf("[+] Exiting..\n");
+    CloseHandle(
+        g_ShifterConfig.hLogFile
+    );
 
-    return EXIT_SUCCESS;
+    return iRet;
 }

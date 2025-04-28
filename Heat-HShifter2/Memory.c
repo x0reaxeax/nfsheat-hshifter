@@ -134,69 +134,10 @@ STATIC BOOLEAN AreDwordsUnique(
 }
 
 STATIC BOOLEAN IsValueLiveMemory(
-    LPCVOID lpcCurrentArtifactAddress,
-    TARGET_GEAR eTargetGear
+    LPCVOID lpcTargetLiveMemory,
+    SIZE_T cbLiveMemorySize
 ) {
-    LPCVOID lpcTargetAddress = NULL;
-
-    switch (eTargetGear) {
-        case TARGET_GEAR_CURRENT:
-            lpcTargetAddress = (LPCVOID) (
-                (DWORD64) lpcCurrentArtifactAddress + AOBSCAN_CURRENT_GEAR_LIVE_MEMORY_OFFSET
-            );
-            break;
-
-        case TARGET_GEAR_LAST:
-            lpcTargetAddress = (LPCVOID) (
-                (DWORD64) lpcCurrentArtifactAddress - AOBSCAN_LAST_GEAR_LIVE_MEMORY_OFFSET
-            );
-            break;
-
-        default:
-            fprintf(
-                stderr,
-                "[-] Invalid target gear: %d\n",
-                eTargetGear
-            );
-            return FALSE;
-    }
-
-    DWORD adwReads[AOBSCAN_LIVE_MEMORY_ITERATIONS] = { 0 };
-    SIZE_T cbBytesRead = 0;
-
-    for (INT i = 0; i < AOBSCAN_LIVE_MEMORY_ITERATIONS; ++i) {
-        if (!ReadProcessMemory(
-            g_ShifterConfig.hGameProcess,
-            lpcTargetAddress,
-            &adwReads[i],
-            sizeof(DWORD),
-            &cbBytesRead
-        )) {
-            fprintf(
-                stderr,
-                "[-] ReadProcessMemory(): E%lu\n",
-                GetLastError()
-            );
-            return FALSE;
-        }
-
-        Sleep(AOBSCAN_LIVE_MEMORY_DELAY_MS);
-    }
-
-    if (!AreDwordsUnique(
-        adwReads,
-        AOBSCAN_LIVE_MEMORY_ITERATIONS
-    )) {
-        return FALSE;
-    }
-
-    return TRUE;
-}
-
-STATIC BOOLEAN VerifyPlayerGear(
-    LPCVOID lpcCurrentArtifactAddress,
-    TARGET_GEAR eTargetGear
-) {
+    BOOL bRet = FALSE;
     if (IsIconic(
         g_ShifterConfig.hGameWindow
     )) {
@@ -212,32 +153,127 @@ STATIC BOOLEAN VerifyPlayerGear(
         }
 
         g_ShifterConfig.bGameWasMinimized = TRUE;
-        Sleep(500);
+
+        // Give the game some time to recover, hopefully this should only be done once.
+        Sleep(1000);
     }
 
-    if (!IsValueLiveMemory(
-        lpcCurrentArtifactAddress,
-        eTargetGear
-    )) {
-        return FALSE;
-    }
-
-    DWORD dwReadValue = 0;
+    LPBYTE alpReads[AOBSCAN_LIVE_MEMORY_ITERATIONS] = { 0 };
     SIZE_T cbBytesRead = 0;
 
+    for (DWORD i = 0; i < AOBSCAN_LIVE_MEMORY_ITERATIONS; ++i) {
+        alpReads[i] = VirtualAlloc(
+            NULL,
+            cbLiveMemorySize,
+            MEM_COMMIT | MEM_RESERVE,
+            PAGE_READWRITE
+        );
+
+        if (NULL == alpReads[i]) {
+            fprintf(
+                stderr,
+                "[-] VirtualAlloc(): E%lu\n",
+                GetLastError()
+            );
+            return FALSE;
+        }
+        
+        if (!ReadProcessMemory(
+            g_ShifterConfig.hGameProcess,
+            lpcTargetLiveMemory,
+            alpReads[i],
+            cbLiveMemorySize,
+            &cbBytesRead
+        )) {
+            fprintf(
+                stderr,
+                "[-] ReadProcessMemory(): E%lu\n",
+                GetLastError()
+            );
+            return FALSE;
+        }
+
+        Sleep(AOBSCAN_LIVE_MEMORY_DELAY_MS);
+    }
+
+    // Check if all reads are the same
+    for (DWORD i = 0; i < AOBSCAN_LIVE_MEMORY_ITERATIONS; ++i) {
+        for (DWORD j = i + 1; j < AOBSCAN_LIVE_MEMORY_ITERATIONS; ++j) {
+            if (EXIT_SUCCESS != memcmp(
+                alpReads[i],
+                alpReads[j],
+                cbLiveMemorySize
+            )) {
+                // Reads are not the same - live memory detected
+                bRet = TRUE;
+                goto _FINAL;
+            }
+        }
+    }
+
+_FINAL:
+    for (DWORD i = 0; i < AOBSCAN_LIVE_MEMORY_ITERATIONS; ++i) {
+        if (NULL != alpReads[i]) {
+            VirtualFree(
+                alpReads[i],
+                0,
+                MEM_RELEASE
+            );
+        }
+    }
+
+    return bRet;
+}
+
+STATIC BOOLEAN VerifyPlayerGear(
+    LPCVOID lpcCurrentArtifactAddress,
+    TARGET_GEAR eTargetGear
+) {
+    DWORD dwReadValue = 0;
+    SIZE_T cbBytesRead = 0;
+    SIZE_T cbLiveMemorySize = 0;
+
     LPCVOID lpcTargetAddressGear;
+    LPCVOID lpcTargetLiveMemory;
+    LPCVOID lpcTargetStaticMemory;
 
     switch (eTargetGear) {
         case TARGET_GEAR_CURRENT:
             lpcTargetAddressGear = (LPCVOID) (
-                (DWORD64) (DWORD64) lpcCurrentArtifactAddress + HEAT_CURRENT_GEAR_ARTIFACT_OFFSET
+                (DWORD64) lpcCurrentArtifactAddress 
+                    + HEAT_CURRENT_GEAR_ARTIFACT_OFFSET
             );
+
+            lpcTargetLiveMemory = (LPCVOID) (
+                (DWORD64) lpcCurrentArtifactAddress 
+                    + AOBSCAN_CURRENT_GEAR_LIVE_MEMORY_OFFSET
+            );
+
+            lpcTargetStaticMemory = (LPCVOID) (
+                (DWORD64) lpcTargetLiveMemory - sizeof(DWORD64)
+            );
+
+            cbLiveMemorySize = HEAT_CURRENT_GEAR_ARTIFACT_SIZE;
+
             break;
 
         case TARGET_GEAR_LAST:
             lpcTargetAddressGear = (LPCVOID) (
-                (DWORD64) lpcCurrentArtifactAddress + HEAT_LAST_GEAR_ARTIFACT_OFFSET
+                (DWORD64) lpcCurrentArtifactAddress 
+                    + HEAT_LAST_GEAR_ARTIFACT_OFFSET
             );
+
+            lpcTargetLiveMemory = (LPCVOID) (
+                (DWORD64) lpcCurrentArtifactAddress 
+                    - AOBSCAN_LAST_GEAR_LIVE_MEMORY_OFFSET
+            );
+
+            lpcTargetStaticMemory = (LPCVOID) (
+                (DWORD64) lpcTargetLiveMemory + sizeof(DWORD64)
+            );
+
+            cbLiveMemorySize = HEAT_LAST_GEAR_ARTIFACT_SIZE;
+
             break;
 
         default:
@@ -249,6 +285,7 @@ STATIC BOOLEAN VerifyPlayerGear(
             return FALSE;
     }
 
+    // Validate gear sanity check first, since it is faster
     if (!ReadProcessMemory(
         g_ShifterConfig.hGameProcess,
         lpcTargetAddressGear,
@@ -266,6 +303,46 @@ STATIC BOOLEAN VerifyPlayerGear(
 
     // Omit GEAR_REVERSE from this check, so the car can't be in reverse gear!!
     if (dwReadValue < GEAR_NEUTRAL || dwReadValue > GEAR_8) {
+        if (g_ShifterConfig.bEnableDebugLogging) {
+            WriteLog(
+                "[-] => %s():%lu Invalid gear at address: 0x%016llX\n",
+                __FUNCTION__,
+                __LINE__,
+                (DWORD64) lpcTargetAddressGear
+            );
+        }
+        return FALSE;
+    }
+
+    // Verify known live memory
+    if (!IsValueLiveMemory(
+        lpcTargetLiveMemory,
+        cbLiveMemorySize
+    )) {
+        if (g_ShifterConfig.bEnableDebugLogging) {
+            WriteLog(
+                "[-] => %s():%lu Omitting static memory at address: 0x%016llX\n",
+                __FUNCTION__,
+                __LINE__,
+                (DWORD64) lpcCurrentArtifactAddress
+            );
+        }
+        return FALSE;
+    }
+
+    // Verify known static memory
+    if (IsValueLiveMemory(
+        (LPCVOID) ((DWORD64) lpcTargetStaticMemory),
+        sizeof(DWORD)
+    )) {
+        if (g_ShifterConfig.bEnableDebugLogging) {
+            WriteLog(
+                "[-] => %s():%lu Omitting live memory at address: 0x%016llX\n",
+                __FUNCTION__,
+                __LINE__,
+                (DWORD64) lpcTargetStaticMemory
+            );
+        }
         return FALSE;
     }
 
@@ -278,13 +355,13 @@ LPCVOID AobScan(
     TARGET_GEAR eTargetGear
 ) {
     SIZE_T cbBytesRead = 0;
-    
+
     LPCBYTE lpAobMatch = NULL;
     LPCBYTE lpCurrentAddress = (LPCBYTE) AOBSCAN_LOW_ADDRESS_LIMIT;
 
     LPBYTE lpReadBuffer = VirtualAlloc(
         NULL,
-        AOBSCAN_SCAN_CHUNK_SIZE,
+        PAGE_SIZE,
         MEM_COMMIT | MEM_RESERVE,
         PAGE_READWRITE
     );
@@ -297,7 +374,7 @@ LPCVOID AobScan(
         );
         return NULL;
     }
-    
+
     MEMORY_BASIC_INFORMATION memInfo = { 0 };
 
     // Save cursor position, but don't check for errors
@@ -312,7 +389,10 @@ LPCVOID AobScan(
     }
 
     while ((DWORD64) lpCurrentAddress < AOBSCAN_HIGH_ADDRESS_LIMIT) {
-        if (0 == ((DWORD64) lpCurrentAddress & 0x4000000) && bCursorPositionSaved) {
+        if (
+            0 == ((DWORD64) lpCurrentAddress & AOBSCAN_UPDATE_CHECKPOINT) 
+            && bCursorPositionSaved
+        ) {
             // Restore cursor position
             SetConsoleCursorPosition(
                 g_ShifterConfig.hShifterConsole,
@@ -324,14 +404,14 @@ LPCVOID AobScan(
                 (DWORD64) lpCurrentAddress
             );
         }
-        
+
         if (sizeof(memInfo) != VirtualQueryEx(
             g_ShifterConfig.hGameProcess,
             lpCurrentAddress,
             &memInfo,
             sizeof(MEMORY_BASIC_INFORMATION)
         )) {
-            lpCurrentAddress += AOBSCAN_SCAN_CHUNK_SIZE;
+            lpCurrentAddress += PAGE_SIZE;
             continue;
         }
 
@@ -342,27 +422,18 @@ LPCVOID AobScan(
             lpCurrentAddress = (LPCBYTE) memInfo.BaseAddress + memInfo.RegionSize;
             continue;
         }
-        
-        LPCBYTE lpRegionBase = (LPCBYTE)memInfo.BaseAddress;
-        SIZE_T cbRegionSize = memInfo.RegionSize;
 
+        LPCBYTE lpRegionEnd = (LPCBYTE) memInfo.BaseAddress + memInfo.RegionSize;
         for (
-            DWORD64 qwOffset = 0; 
-            qwOffset < cbRegionSize; 
-            qwOffset += AOBSCAN_SCAN_CHUNK_SIZE
+            LPCBYTE lpPageAddr = (LPCBYTE) memInfo.BaseAddress;
+            lpPageAddr < lpRegionEnd;
+            lpPageAddr += PAGE_SIZE
         ) {
-            SIZE_T cbChunkSize = 
-                ((cbRegionSize - qwOffset) > AOBSCAN_SCAN_CHUNK_SIZE) 
-                ? AOBSCAN_SCAN_CHUNK_SIZE 
-                : (cbRegionSize - qwOffset);
-
-            LPCBYTE lpChunkAddr = lpRegionBase + qwOffset;
-
             if (!ReadProcessMemory(
                 g_ShifterConfig.hGameProcess,
-                lpChunkAddr,
+                lpPageAddr,
                 lpReadBuffer,
-                cbChunkSize,
+                PAGE_SIZE,
                 &cbBytesRead
             )) {
                 continue;
@@ -373,32 +444,56 @@ LPCVOID AobScan(
                     continue;
                 }
 
-                if (EXIT_SUCCESS == memcmp(
+                LPCVOID lpTempMatch = lpPageAddr + qwIndex;
+                if (TARGET_GEAR_CURRENT == eTargetGear) {
+                    if (HEAT_CURRENT_GEAR_ARTIFACT_NIBBLE != GET_NIBBLE(lpTempMatch)) {
+                        continue;
+                    }
+                }
+
+                if (EXIT_SUCCESS != memcmp(
                     lpReadBuffer + qwIndex,
                     abyPattern,
                     cbPatternSize
                 )) {
-                    LPCVOID lpTempMatch = lpChunkAddr + qwIndex;
-                    if (TARGET_GEAR_CURRENT == eTargetGear) {
-                        if (HEAT_CURRENT_GEAR_ARTIFACT_NIBBLE != GET_NIBBLE(lpTempMatch)) {
-                            continue;
-                        }
-                    }
-
-                    if (!VerifyPlayerGear(
-                        lpTempMatch,
-                        eTargetGear
-                    )) {
-                        continue;
-                    }
-
-                    lpAobMatch = lpTempMatch;
-                    goto _FINAL;
+                    continue;
                 }
+                
+                if (g_ShifterConfig.bEnableDebugLogging) {
+                    WriteLog(
+                        "[*] Testing pattern at address: 0x%016llX\n",
+                        (DWORD64) lpTempMatch
+                    );
+                }
+
+                if (!VerifyPlayerGear(
+                    lpTempMatch,
+                    eTargetGear
+                )) {
+                    continue;
+                }
+
+                // Check if artifact itself is live memory
+                if (IsValueLiveMemory(
+                    lpTempMatch,
+                    cbPatternSize
+                )) {
+                    if (g_ShifterConfig.bEnableDebugLogging) {
+                        WriteLog(
+                            "[-] => %s():%lu Omitting live memory at address: 0x%016llX\n",
+                            __FUNCTION__,
+                            __LINE__,
+                            (DWORD64) lpTempMatch
+                        );
+                    }
+                    continue;
+                }
+
+                lpAobMatch = lpTempMatch;
+                goto _FINAL;
             }
         }
-        
-        lpCurrentAddress = (LPCBYTE)memInfo.BaseAddress + memInfo.RegionSize;
+        lpCurrentAddress = (LPCBYTE) memInfo.BaseAddress + memInfo.RegionSize;
     }
 
 _FINAL:
@@ -410,6 +505,7 @@ _FINAL:
 
     return lpAobMatch;
 }
+
 
 SHIFT_GEAR ReadGear(
     CONST TARGET_GEAR eTargetGear
