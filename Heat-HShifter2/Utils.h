@@ -98,6 +98,7 @@ typedef struct _SHIFTER_CONFIG {
     DWORD dwShifterThreadId;
 
     DWORD dwCurrentGear;
+    DWORD dwLastGear;
     
     HWND hGameWindow;
     BOOL bGameWasMinimized;

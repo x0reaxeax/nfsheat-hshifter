@@ -38,7 +38,7 @@
 #include "Utils.h"
 
 // Verifies written gear value, but causes a 75ms delay
-#define ENABLE_GEAR_VALIDATION
+//#define ENABLE_GEAR_VALIDATION
 
 // Checks if the game window is in the foreground before processing key events
 #define ENABLE_FOREGROUND_CHECK
@@ -359,6 +359,10 @@ STATIC BOOL ShiftGear(
 ) {
     SIZE_T cbBytesWritten = 0;
 
+    if (eTargetGear == g_ShifterConfig.dwLastGear) {
+        return TRUE;
+    }
+
     // Writes go ASAP
     if (!WriteProcessMemory(
         g_ShifterConfig.hGameProcess,
@@ -419,6 +423,8 @@ STATIC BOOL ShiftGear(
 #else
     g_ShifterConfig.dwCurrentGear = eTargetGear;
 #endif
+    // Log the gear change
+    g_ShifterConfig.dwLastGear = eTargetGear;
 
     if (g_ShifterConfig.bGearWindowEnabled) {
         DrawAsciiGearDisplay();
