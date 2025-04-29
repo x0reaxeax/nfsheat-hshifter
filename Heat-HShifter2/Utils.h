@@ -31,7 +31,7 @@
 
 #define HSHIFTER_VERSION_MAJOR                  2
 #define HSHIFTER_VERSION_MINOR                  0
-#define HSHIFTER_VERSION_PATCH                  1
+#define HSHIFTER_VERSION_PATCH                  2
 
 #define PAGE_SIZE                               0x1000
 
