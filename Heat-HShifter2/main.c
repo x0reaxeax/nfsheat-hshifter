@@ -212,6 +212,10 @@ STATIC BOOLEAN InitShifter(
         printf("[*] Debug logging enabled.\n");
     }
 
+    if (g_ShifterConfig.bSecondGearScan) {
+        printf("[*] Second gear scan target enabled.\n");
+    }
+
     g_ShifterConfig.hShifterWindow = GetForegroundWindow();
     g_ShifterConfig.dwShifterProcessId = GetCurrentProcessId();
     g_ShifterConfig.dwShifterThreadId = GetCurrentThreadId();
@@ -496,6 +500,13 @@ INT64 CALLBACK KeyboardHookProc(
                 PostQuitMessage(EXIT_FAILURE);
             }
 
+            printf(
+                "[+] Current gear address: 0x%llX\n"
+                "[+] Last gear address: 0x%llX\n",
+                (DWORD64) g_ShifterConfig.lpCurrentGearAddress,
+                (DWORD64) g_ShifterConfig.lpLastGearAddress
+            );
+
             if (g_ShifterConfig.bGearWindowEnabled) {
                 SwitchWindows();
             }
@@ -524,12 +535,22 @@ _NEXT_HOOK:
 
 int main(int argc, const char *argv[]) {
     if (argc >= 2) {
-        if (EXIT_SUCCESS == strncmp(
-            argv[1],
-            "--debug",
-            strlen("--debug")
-        )) {
-            g_ShifterConfig.bEnableDebugLogging = TRUE;
+        for (INT i = 1; i < argc; i++) {
+            if (EXIT_SUCCESS == strncmp(
+                argv[i],
+                "--debug",
+                strlen("--debug")
+            )) {
+                g_ShifterConfig.bEnableDebugLogging = TRUE;
+            }
+
+            if (EXIT_SUCCESS == strncmp(
+                argv[i],
+                "--2gfix",
+                strlen("--2gfix")
+            )) {
+                g_ShifterConfig.bSecondGearScan = TRUE;
+            }
         }
     }
     

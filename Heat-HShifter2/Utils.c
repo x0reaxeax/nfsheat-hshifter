@@ -176,6 +176,10 @@ BOOLEAN WriteLog(
         return FALSE;
     }
 
+    if (!g_ShifterConfig.bEnableDebugLogging) {
+        return FALSE;
+    }
+
     va_list args;
     va_start(args, szFormat);
     vsnprintf(
@@ -654,6 +658,8 @@ BOOL ForceForegroundWindow(
         );
         return FALSE;
     }
+
+    return TRUE;
 }
 
 VOID SwitchWindows(
@@ -743,7 +749,7 @@ VOID DrawAsciiGearDisplay(
     snprintf(
         szOutputBuffer, 
         sizeof(szOutputBuffer),
-        "[ ******> HEAT H-Shifter v2.0 <****** ]\n"
+        "[ ******> HEAT H-Shifter v%u.%u <****** ]\n"
         "[ ----------------------------------- ]\n"
         "[ 0 - 9  - Gear Control               ]\n"
         "[ INSERT - Toggle Gear/Main Window    ]\n"
@@ -763,6 +769,8 @@ VOID DrawAsciiGearDisplay(
         "     \\               /\n"
         "      \\             /\n"
         "       \\___________/\n",
+        HSHIFTER_VERSION_MAJOR,
+        HSHIFTER_VERSION_MINOR,
         cTargetGear
     );
 

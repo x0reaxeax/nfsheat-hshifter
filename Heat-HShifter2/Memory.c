@@ -301,17 +301,28 @@ STATIC BOOLEAN VerifyPlayerGear(
         return FALSE;
     }
 
-    // Omit GEAR_REVERSE from this check, so the car can't be in reverse gear!!
-    if (dwReadValue < GEAR_NEUTRAL || dwReadValue > GEAR_8) {
-        if (g_ShifterConfig.bEnableDebugLogging) {
+    if (g_ShifterConfig.bSecondGearScan) {
+        if (GEAR_2 != dwReadValue) {
             WriteLog(
                 "[-] => %s():%lu Invalid gear at address: 0x%016llX\n",
                 __FUNCTION__,
                 __LINE__,
                 (DWORD64) lpcTargetAddressGear
             );
+
+            return FALSE;
         }
-        return FALSE;
+    } else {
+        // Omit GEAR_REVERSE from this check, so the car can't be in reverse gear!!
+        if (dwReadValue < GEAR_NEUTRAL || dwReadValue > GEAR_8) {
+            WriteLog(
+                "[-] => %s():%lu Invalid gear at address: 0x%016llX\n",
+                __FUNCTION__,
+                __LINE__,
+                (DWORD64) lpcTargetAddressGear
+            );
+            return FALSE;
+        }
     }
 
     // Verify known live memory
@@ -319,14 +330,12 @@ STATIC BOOLEAN VerifyPlayerGear(
         lpcTargetLiveMemory,
         cbLiveMemorySize
     )) {
-        if (g_ShifterConfig.bEnableDebugLogging) {
-            WriteLog(
-                "[-] => %s():%lu Omitting static memory at address: 0x%016llX\n",
-                __FUNCTION__,
-                __LINE__,
-                (DWORD64) lpcCurrentArtifactAddress
-            );
-        }
+        WriteLog(
+            "[-] => %s():%lu Omitting static memory at address: 0x%016llX\n",
+            __FUNCTION__,
+            __LINE__,
+            (DWORD64) lpcCurrentArtifactAddress
+        );
         return FALSE;
     }
 
@@ -335,14 +344,12 @@ STATIC BOOLEAN VerifyPlayerGear(
         (LPCVOID) ((DWORD64) lpcTargetStaticMemory),
         sizeof(DWORD)
     )) {
-        if (g_ShifterConfig.bEnableDebugLogging) {
-            WriteLog(
-                "[-] => %s():%lu Omitting live memory at address: 0x%016llX\n",
-                __FUNCTION__,
-                __LINE__,
-                (DWORD64) lpcTargetStaticMemory
-            );
-        }
+        WriteLog(
+            "[-] => %s():%lu Omitting live memory at address: 0x%016llX\n",
+            __FUNCTION__,
+            __LINE__,
+            (DWORD64) lpcTargetStaticMemory
+        );
         return FALSE;
     }
 
@@ -459,12 +466,10 @@ LPCVOID AobScan(
                     continue;
                 }
                 
-                if (g_ShifterConfig.bEnableDebugLogging) {
-                    WriteLog(
-                        "[*] Testing pattern at address: 0x%016llX\n",
-                        (DWORD64) lpTempMatch
-                    );
-                }
+                WriteLog(
+                    "[*] Testing pattern at address: 0x%016llX\n",
+                    (DWORD64) lpTempMatch
+                );
 
                 if (!VerifyPlayerGear(
                     lpTempMatch,
@@ -473,20 +478,20 @@ LPCVOID AobScan(
                     continue;
                 }
 
-                // Check if artifact itself is live memory
-                if (IsValueLiveMemory(
-                    lpTempMatch,
-                    cbPatternSize
-                )) {
-                    if (g_ShifterConfig.bEnableDebugLogging) {
+                if (!g_ShifterConfig.bSecondGearScan) {
+                    // Check if artifact itself is live memory
+                    if (IsValueLiveMemory(
+                        lpTempMatch,
+                        cbPatternSize
+                    )) {
                         WriteLog(
                             "[-] => %s():%lu Omitting live memory at address: 0x%016llX\n",
                             __FUNCTION__,
                             __LINE__,
                             (DWORD64) lpTempMatch
                         );
+                        continue;
                     }
-                    continue;
                 }
 
                 lpAobMatch = lpTempMatch;

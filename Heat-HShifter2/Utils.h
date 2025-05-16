@@ -31,7 +31,7 @@
 
 #define HSHIFTER_VERSION_MAJOR                  2
 #define HSHIFTER_VERSION_MINOR                  0
-#define HSHIFTER_VERSION_PATCH                  2
+#define HSHIFTER_VERSION_PATCH                  3
 
 #define PAGE_SIZE                               0x1000
 
@@ -101,8 +101,10 @@ typedef struct _SHIFTER_CONFIG {
     DWORD dwLastGear;
     
     HWND hGameWindow;
-    BOOL bGameWasMinimized;
+    BOOLEAN bGameWasMinimized;
     
+    BOOLEAN bSecondGearScan;
+
     HWND hShifterWindow;
 
     HANDLE hShifterConsole;
