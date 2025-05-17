@@ -358,7 +358,7 @@ STATIC BOOLEAN InitShifter(
     return TRUE;
 }
 
-STATIC BOOL ShiftGear(
+STATIC BOOLEAN ShiftGear(
     SHIFT_GEAR eTargetGear
 ) {
     SIZE_T cbBytesWritten = 0;

@@ -583,7 +583,7 @@ VOID ClearScreen(
     }
 }
 
-BOOL ForceForegroundWindow(
+BOOLEAN MAYBE_UNUSED ForceForegroundWindow(
     HWND hTargetWindow
 ) {
     DWORD dwForegroundThreadId = GetWindowThreadProcessId(
@@ -717,6 +717,71 @@ BOOLEAN SetMainWindowVisible(
     g_ShifterConfig.bIsMainWindowVisible = TRUE;
     g_ShifterConfig.bIsGearWindowVisible = FALSE;
     return TRUE;
+}
+
+BOOLEAN MAYBE_UNUSED SetMinimizeButtonVisible(
+    HWND hWnd, 
+    BOOLEAN bVisible
+) {
+    LONG lStyle = GetWindowLong(
+        hWnd, 
+        GWL_STYLE
+    );
+
+    if (0 == lStyle) {
+        fprintf(
+            stderr,
+            "[-] GetWindowLong(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    if (bVisible) {
+        lStyle |= WS_MINIMIZEBOX;
+    } else {
+        lStyle &= ~WS_MINIMIZEBOX;
+    }
+
+    if (0 == SetWindowLong(
+        hWnd, 
+        GWL_STYLE, 
+        lStyle
+    )) {
+        fprintf(
+            stderr,
+            "[-] SetWindowLong(): E%lu\n",
+            GetLastError()
+        );
+        return FALSE;
+    }
+
+    return SetWindowPos(
+        hWnd,
+        NULL,
+        0, 0, 0, 0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED
+    );
+}
+
+BOOLEAN IsWindowInWindowedMode(
+    HWND hWnd
+) {
+    if (!IsWindow(hWnd)) {
+        return FALSE;
+    }
+
+    LONG lStyle = GetWindowLong(hWnd, GWL_STYLE);
+
+    if (WS_OVERLAPPEDWINDOW & lStyle) {
+        return TRUE;
+    }
+
+    if ((WS_CAPTION & lStyle) && (WS_SYSMENU & lStyle)) {
+        return TRUE;
+    }
+
+    return FALSE;
 }
 
 VOID DrawAsciiGearDisplay(

@@ -137,7 +137,7 @@ STATIC BOOLEAN IsValueLiveMemory(
     LPCVOID lpcTargetLiveMemory,
     SIZE_T cbLiveMemorySize
 ) {
-    BOOL bRet = FALSE;
+    BOOLEAN bRet = FALSE;
     if (IsIconic(
         g_ShifterConfig.hGameWindow
     )) {
@@ -154,8 +154,12 @@ STATIC BOOLEAN IsValueLiveMemory(
 
         g_ShifterConfig.bGameWasMinimized = TRUE;
 
-        // Give the game some time to recover, hopefully this should only be done once.
-        Sleep(1000);
+        // Wait for and verify window state change
+        while (IsIconic(
+            g_ShifterConfig.hGameWindow
+        )) {
+            Sleep(250);
+        }
     }
 
     LPBYTE alpReads[AOBSCAN_LIVE_MEMORY_ITERATIONS] = { 0 };

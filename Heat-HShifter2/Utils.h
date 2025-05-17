@@ -28,10 +28,11 @@
 #define VOLATILE    volatile
 #define STATIC      static
 #define INLINE      inline
+#define MAYBE_UNUSED
 
 #define HSHIFTER_VERSION_MAJOR                  2
 #define HSHIFTER_VERSION_MINOR                  0
-#define HSHIFTER_VERSION_PATCH                  3
+#define HSHIFTER_VERSION_PATCH                  4
 
 #define PAGE_SIZE                               0x1000
 
@@ -185,7 +186,7 @@ BOOLEAN MaximizeWindow(
 /// <returns>
 ///  TRUE if the target window was successfully forced to the foreground, FALSE on failure.
 /// </returns>
-BOOL ForceForegroundWindow(
+BOOLEAN MAYBE_UNUSED ForceForegroundWindow(
     HWND hTargetWindow
 );
 
@@ -204,6 +205,30 @@ VOID SwitchWindows(
 /// </returns>
 BOOLEAN SetMainWindowVisible(
     VOID
+);
+
+/// <summary>
+///  Controls visibility of minimize button in target window.
+/// </summary>
+/// <param name="hWnd"></param>
+/// <param name="bVisible"></param>
+/// <returns>
+///  TRUE if the change was successful, FALSE on failure.
+/// </returns>
+BOOLEAN MAYBE_UNUSED SetMinimizeButtonVisible(
+    HWND hWnd,
+    BOOLEAN bVisible
+);
+
+/// <summary>
+///  Checks if the target window is in windowed mode.
+/// </summary>
+/// <param name="hWnd"></param>
+/// <returns>
+///  TRUE if the target window is in windowed mode, FALSE otherwise.
+/// </returns>
+BOOLEAN IsWindowInWindowedMode(
+    HWND hWnd
 );
 
 /// <summary>

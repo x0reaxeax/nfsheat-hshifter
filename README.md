@@ -49,15 +49,15 @@ All the annoying manual memory scans from v1 are gone. The new version automatic
 3. **Run NFS Heat**:
 
    - Launch the game, set transmission to manual (also disable auto-reverse), and load into a session **(must NOT be inside the garage)**.
+   - Make sure your car is **NOT in reverse**!
 
 4. **Run the H-Shifter Program**:
-
+   - To avoid issues, set the game window to "windowed mode" (ALT+ENTER) while the shifter program initializes.
    - Launch `Heat-HShifter2.exe`.
    - The program will automatically scan for gear addresses.
    - If your game is minimized, the program will automatically maximize it for the duration of the scan.
       - Make sure the game **stays maximized** during the scan. 
-      - If you're running into issues, try setting the game window to "windowed mode" (ALT+ENTER) for the duration of the scan.
-   - Once completed, you can immediately start using your shifter!
+   - Once completed, you can immediately start using your shifter! (You can now also switch back to fullscreen mode).
 
 ---
 
@@ -104,6 +104,10 @@ Key values can be found at [Virtual-Key Codes](https://learn.microsoft.com/en-us
 ---
 
 ## 📣 Troubleshooting & Support
+
+If the program fails to find memory artifacts / gear addresses, please try the following instructions:
+1. Shift your car into the **2nd gear**.
+2. Run the HShifter program with `--2gfix` argument (`Heat-HShifter2.exe --2gfix`).  
 
 If you encounter any issues, please open an issue on the [GitHub Issues page](https://github.com/x0reaxeax/nfsheat-hshifter/issues).  
   
