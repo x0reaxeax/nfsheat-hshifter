@@ -55,6 +55,8 @@ All the annoying manual memory scans from v1 are gone. The new version automatic
    - Launch `Heat-HShifter2.exe`.
    - The program will automatically scan for gear addresses.
    - If your game is minimized, the program will automatically maximize it for the duration of the scan.
+      - Make sure the game **stays maximized** during the scan. 
+      - If you're running into issues, try setting the game window to "windowed mode" (ALT+ENTER) for the duration of the scan.
    - Once completed, you can immediately start using your shifter!
 
 ---
